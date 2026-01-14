@@ -1,0 +1,48 @@
+# Kotlin版 .gitignore
+
+# Gradle files
+.gradle/
+build/
+**/build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Android Studio
+*.iml
+.idea/
+.DS_Store
+*.log
+.externalNativeBuild
+.cxx
+
+# Keystore files
+*.jks
+*.keystore
+key.properties
+
+# Firebase
+google-services.json
+firebase_options.kt
+
+# Signing
+release/
+*.aab
+*.apk
+
+# Kotlin
+*.class
+*.jar
+*.kotlin_module
+
+# NDK
+obj/
+
+# Captures folder for screenshots
+captures/
+
+# IntelliJ
+out/
+
+# User-specific configurations
+.gradletasknamecache
