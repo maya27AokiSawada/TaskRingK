@@ -1,7 +1,11 @@
 # Kotlin版 .gitignore
 
+# Secrets — never commit
+.env
+
 # Gradle files
 .gradle/
+.kotlin/
 build/
 **/build/
 
@@ -11,6 +15,7 @@ local.properties
 # Android Studio
 *.iml
 .idea/
+.vscode/
 .DS_Store
 *.log
 .externalNativeBuild
@@ -35,6 +40,9 @@ release/
 *.jar
 *.kotlin_module
 
+# Keep the Gradle wrapper jar (required to build after clone)
+!gradle/wrapper/gradle-wrapper.jar
+
 # NDK
 obj/
 
@@ -46,3 +54,8 @@ out/
 
 # User-specific configurations
 .gradletasknamecache
+
+# Flutter reference docs are local/reference-only for this Kotlin port
+docs/Flutter_Version_docs/
+docs/Flutter_version_docs/
+docs/flutter_version_docs/
