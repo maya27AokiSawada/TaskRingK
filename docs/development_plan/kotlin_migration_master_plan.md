@@ -2,7 +2,7 @@
 
 **作成日**: 2026-06-30
 **対象**: Flutter版 GoShopping (v1.1.0 / Build 16) → Kotlin (Android Native) 移植
-**ステータス**: Phase 2 完了（Phase 3 グループ管理 着手前）
+**ステータス**: Phase 3 完了（Phase 4 リスト + アイテム 着手前）
 
 このプランは以下のドキュメントを根拠に作成しています。
 
