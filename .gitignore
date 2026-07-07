@@ -59,3 +59,5 @@ out/
 docs/Flutter_Version_docs/
 docs/Flutter_version_docs/
 docs/flutter_version_docs/
+# Exception: divergence spec is an original document for Kotlin/Swift implementation
+!docs/Flutter_Version_docs/specifications/divergence_spec_from_flutter.md
