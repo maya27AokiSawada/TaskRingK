@@ -10,6 +10,7 @@ data class SharedList(
     val groupName: String,
     val description: String = "",
     val listType: ListType = ListType.SHOPPING,
+    val listKind: ListKind = ListKind.SHOPPING_LIST,
     val items: Map<String, SharedItem> = emptyMap(),
     val createdAt: Instant,
     val updatedAt: Instant? = null,
@@ -21,3 +22,6 @@ data class SharedList(
 }
 
 enum class ListType { SHOPPING, TODO }
+
+/** リスト種別: ショッピングリスト / To Do リスト */
+enum class ListKind { SHOPPING_LIST, TO_DO_LIST }

@@ -16,6 +16,7 @@ data class SharedListEntity(
     val groupName: String,
     val description: String,
     val listType: String,
+    val listKind: String,
     val itemsJson: String,
     val createdAt: Long,
     val updatedAt: Long?,

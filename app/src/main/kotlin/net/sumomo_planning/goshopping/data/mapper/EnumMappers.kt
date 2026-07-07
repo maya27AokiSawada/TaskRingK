@@ -2,6 +2,7 @@ package net.sumomo_planning.goshopping.data.mapper
 
 import net.sumomo_planning.goshopping.domain.model.GroupType
 import net.sumomo_planning.goshopping.domain.model.InvitationStatus
+import net.sumomo_planning.goshopping.domain.model.ListKind
 import net.sumomo_planning.goshopping.domain.model.ListType
 import net.sumomo_planning.goshopping.domain.model.NotificationType
 import net.sumomo_planning.goshopping.domain.model.SharedGroupRole
@@ -27,6 +28,17 @@ val ListType.storageValue: String
 fun String.toListType(): ListType = when (lowercase()) {
     "todo" -> ListType.TODO
     else -> ListType.SHOPPING
+}
+
+val ListKind.storageValue: String
+    get() = when (this) {
+        ListKind.SHOPPING_LIST -> "shoppingList"
+        ListKind.TO_DO_LIST -> "toDoList"
+    }
+
+fun String.toListKind(): ListKind = when (this) {
+    "toDoList" -> ListKind.TO_DO_LIST
+    else -> ListKind.SHOPPING_LIST
 }
 
 val SyncStatus.storageValue: String

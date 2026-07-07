@@ -53,6 +53,7 @@ class SharedListDaoTest {
         groupName = groupId,
         description = "",
         listType = "shopping",
+        listKind = "shoppingList",
         itemsJson = "{}",
         createdAt = 1782777600000,
         updatedAt = null,

@@ -2,6 +2,7 @@ package net.sumomo_planning.goshopping.data.mapper
 
 import java.time.Instant
 import kotlinx.serialization.json.Json
+import net.sumomo_planning.goshopping.domain.model.ListKind
 import net.sumomo_planning.goshopping.domain.model.ListType
 import net.sumomo_planning.goshopping.domain.model.SharedItem
 import net.sumomo_planning.goshopping.domain.model.SharedList
@@ -33,6 +34,7 @@ class SharedListMappersTest {
             groupName = "Family",
             description = "desc",
             listType = ListType.TODO,
+            listKind = ListKind.TO_DO_LIST,
             items = mapOf(item.itemId to item),
             createdAt = Instant.parse("2026-06-30T00:00:00Z"),
             updatedAt = Instant.parse("2026-06-30T10:00:00Z"),

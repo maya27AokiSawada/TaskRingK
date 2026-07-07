@@ -12,7 +12,7 @@ import net.sumomo_planning.goshopping.data.local.room.entity.WhiteboardEntity
 
 @Database(
     entities = [SharedGroupEntity::class, SharedListEntity::class, WhiteboardEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(RoomConverters::class)
