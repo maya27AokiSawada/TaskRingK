@@ -86,6 +86,12 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        // Allow android.util.Log and other Android-only stubs to return default
+        // values (0 / null / false) in JVM unit tests instead of throwing.
+        unitTests.isReturnDefaultValues = true
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
