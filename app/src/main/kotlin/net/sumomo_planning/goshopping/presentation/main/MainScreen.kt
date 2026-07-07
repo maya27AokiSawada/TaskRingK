@@ -1,28 +1,34 @@
 package net.sumomo_planning.goshopping.presentation.main
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.sumomo_planning.goshopping.presentation.auth.AuthViewModel
+import net.sumomo_planning.goshopping.presentation.group.SharedGroupScreen
+import net.sumomo_planning.goshopping.presentation.settings.SettingsPlaceholderScreen
+import net.sumomo_planning.goshopping.presentation.shoppinglist.SharedListScreen
 
 /**
- * Placeholder main screen (Phase 2).
- * Shows the signed-in user's email and a sign-out button.
- * Will be replaced by the real group/list screen in Phase 3+.
+ * Main screen with a bottom navigation bar (Phase 3+).
+ *
+ * Tabs (porting_spec §3-1):
+ *  Tab 0 — 買い物リスト   (placeholder; Phase 4)
+ *  Tab 1 — グループ管理  (SharedGroupScreen; Phase 3)
+ *  Tab 2 — 設定          (placeholder; Phase 9)
  */
 @Composable
 fun MainScreen(
@@ -30,42 +36,47 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
-    val uiState by authViewModel.uiState.collectAsStateWithLifecycle()
+    var selectedTab by rememberSaveable { mutableIntStateOf(1) }
 
-    Scaffold(modifier = modifier) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = "GoShopping",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary,
+    Scaffold(
+        modifier = modifier,
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                    label = { Text("リスト") },
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = { Icon(Icons.Default.Group, contentDescription = null) },
+                    label = { Text("グループ") },
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text("設定") },
+                )
+            }
+        },
+    ) { innerPadding ->
+        when (selectedTab) {
+            0 -> SharedListScreen(
+                modifier = Modifier.padding(innerPadding),
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = uiState.currentUser?.email ?: "",
-                style = MaterialTheme.typography.bodyLarge,
+            1 -> SharedGroupScreen(
+                modifier = Modifier.padding(innerPadding),
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "サインイン済み ✓",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-            Spacer(Modifier.height(32.dp))
-            Button(
-                onClick = {
+            else -> SettingsPlaceholderScreen(
+                onSignOut = {
                     authViewModel.signOut()
                     onSignOut()
-                }
-            ) {
-                Text("サインアウト")
-            }
+                },
+                modifier = Modifier.padding(innerPadding),
+            )
         }
     }
 }
