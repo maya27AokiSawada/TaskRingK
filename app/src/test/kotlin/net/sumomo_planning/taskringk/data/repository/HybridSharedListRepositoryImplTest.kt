@@ -318,4 +318,62 @@ class HybridSharedListRepositoryImplTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `observeList emits Firestore data and caches to Room`() = runTest {
+        every { firestoreDataSource.observeList(groupId, listId) } returns flowOf(fakeList)
+
+        repository.observeList(groupId, listId).test {
+            val list = awaitItem()
+            assertEquals(listId, list?.listId)
+            coVerify { sharedListDao.upsert(any()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `observeList falls back to Room when Firestore errors`() = runTest {
+        every { firestoreDataSource.observeList(groupId, listId) } returns flow {
+            throw RuntimeException("Firestore unavailable")
+        }
+        every { sharedListDao.observeById(listId) } returns flowOf(fakeEntity)
+
+        repository.observeList(groupId, listId).test {
+            val list = awaitItem()
+            assertEquals(listId, list?.listId)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `observeList uses Room directly when offline`() = runTest {
+        every { networkMonitor.isOnlineFlow } returns flowOf(false)
+        every { sharedListDao.observeById(listId) } returns flowOf(fakeEntity)
+
+        repository.observeList(groupId, listId).test {
+            val list = awaitItem()
+            assertEquals(listId, list?.listId)
+            coVerify(exactly = 0) { firestoreDataSource.observeList(any(), any()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `observeList switches source when connectivity changes`() = runTest {
+        val networkFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
+        every { networkMonitor.isOnlineFlow } returns networkFlow
+        every { sharedListDao.observeById(listId) } returns flowOf(fakeEntity)
+        every { firestoreDataSource.observeList(groupId, listId) } returns flowOf(fakeList)
+
+        repository.observeList(groupId, listId).test {
+            val offlineList = awaitItem()
+            assertEquals(listId, offlineList?.listId)
+
+            networkFlow.value = true
+            val onlineList = awaitItem()
+            assertEquals(listId, onlineList?.listId)
+            coVerify { firestoreDataSource.observeList(groupId, listId) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

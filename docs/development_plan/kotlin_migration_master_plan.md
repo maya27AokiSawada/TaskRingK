@@ -2,7 +2,7 @@
 
 **作成日**: 2026-06-30
 **対象**: Flutter版 GoShopping (v1.1.0 / Build 16) → Kotlin (Android Native) 移植
-**ステータス**: Phase 3 完了（Phase 4 リスト + アイテム 着手前）
+**ステータス**: Phase 5 実装完了（実機 2 端末検証待ち）
 
 このプランは以下のドキュメントを根拠に作成しています。
 
@@ -74,10 +74,10 @@ QR           : CameraX + ML Kit Barcode Scanning
 
 ## 3. ターゲットパッケージ構成
 
-`net.sumomo_planning.goshopping`
+`net.sumomo_planning.taskringk`
 
 ```
-app/src/main/kotlin/net/sumomo_planning/goshopping/
+app/src/main/kotlin/net/sumomo_planning/taskringk/
 ├── GoShopApplication.kt              # @HiltAndroidApp + Firestore 設定
 ├── MainActivity.kt                   # @AndroidEntryPoint + NavHost
 ├── di/                               # Hilt Modules
@@ -193,6 +193,14 @@ app/src/main/kotlin/net/sumomo_planning/goshopping/
 
 **DoD**: 2端末（または2エミュ）で片方の変更が他方へリアルタイム反映。機内モードでも閲覧・編集でき、復帰後に自動同期。
 
+**進捗メモ（2026-07-08）**
+- `NetworkMonitor.isOnlineFlow` を基点に、`HybridSharedGroupRepositoryImpl` / `HybridSharedListRepositoryImpl` で `flatMapLatest` 切替を実装済み
+- オンライン時: Firestore listener を購読し Room キャッシュを更新、オフライン時: Room を直接購読
+- Firestore エラー時の Room フォールバックを実装済み
+- `observeList`（単一リスト監視）についても、オンライン/オフライン切替とフォールバックのテストを追加済み
+- ViewModel 側で監視開始時の `isLoading` 制御と、同期復帰時のエラー表示クリアを追加済み
+- 未完了: 実機/2エミュでの最終 DoD 検証
+
 > ⚠️ migration_notes: UI が更新されない時は `StateFlow` + `collectAsStateWithLifecycle()` を使っているか確認。
 
 ### Phase 6: QR招待（P1）
@@ -298,7 +306,7 @@ porting_spec §12 を実装全体で遵守する。
 
 ## 9. 次のアクション（着手手順）
 
-1. Android Studio で Empty Compose Activity を作成（package: `net.sumomo_planning.goshopping`）
+1. Android Studio で Empty Compose Activity を作成（package: `net.sumomo_planning.taskringk`）
 2. `build.gradle.kts` に依存追加（Compose BOM / Hilt / Room / Firebase BOM / Coroutines / Navigation / CameraX / ML Kit）
 3. `google-services.json`（dev/prod）配置、`productFlavors` 定義
 4. `GoShopApplication` で Firestore オフライン永続化を有効化し、`@HiltAndroidApp` を付与

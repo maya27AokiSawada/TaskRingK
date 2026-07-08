@@ -94,19 +94,20 @@ class SharedListViewModel @Inject constructor(
 
     private fun startObservingGroups(uid: String) {
         groupsJob?.cancel()
+        _uiState.update { it.copy(isLoading = true) }
         groupsJob = observeGroupsUseCase(uid)
             .onEach { groups ->
                 val selectedId = _uiState.value.selectedGroupId
                     ?.let { id -> groups.firstOrNull { it.groupId == id }?.groupId }
                     ?: groups.firstOrNull()?.groupId
-                _uiState.update { it.copy(groups = groups) }
+                _uiState.update { it.copy(groups = groups, isLoading = false, errorMessage = null) }
                 if (selectedId != _uiState.value.selectedGroupId) {
                     selectGroup(selectedId)
                 } else if (selectedId != null && listsJob == null) {
                     startObservingLists(selectedId)
                 }
             }
-            .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
+            .catch { e -> _uiState.update { it.copy(isLoading = false, errorMessage = e.message) } }
             .launchIn(viewModelScope)
     }
 
@@ -129,30 +130,45 @@ class SharedListViewModel @Inject constructor(
 
     private fun startObservingLists(groupId: String) {
         listsJob?.cancel()
+        _uiState.update { it.copy(isLoading = true) }
         listsJob = observeListsByGroupUseCase(groupId)
             .onEach { lists ->
                 val selectedId = _uiState.value.selectedListId
                     ?.let { id -> lists.firstOrNull { it.listId == id }?.listId }
                     ?: lists.firstOrNull()?.listId
-                _uiState.update { it.copy(lists = lists) }
+                _uiState.update { it.copy(lists = lists, isLoading = false, errorMessage = null) }
                 if (selectedId != _uiState.value.selectedListId) {
                     selectList(selectedId)
                 }
             }
-            .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
+            .catch { e -> _uiState.update { it.copy(isLoading = false, errorMessage = e.message) } }
             .launchIn(viewModelScope)
     }
 
     fun selectList(listId: String?) {
-        _uiState.update { it.copy(selectedListId = listId, currentList = null) }
+        _uiState.update {
+            it.copy(
+                selectedListId = listId,
+                currentList = null,
+                isLoading = listId != null,
+            )
+        }
         listDetailJob?.cancel()
         listDetailJob = null
 
         val groupId = _uiState.value.selectedGroupId ?: return
         if (listId != null) {
             listDetailJob = observeListUseCase(groupId, listId)
-                .onEach { list -> _uiState.update { it.copy(currentList = list) } }
-                .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
+                .onEach { list ->
+                    _uiState.update {
+                        it.copy(
+                            currentList = list,
+                            isLoading = false,
+                            errorMessage = null,
+                        )
+                    }
+                }
+                .catch { e -> _uiState.update { it.copy(isLoading = false, errorMessage = e.message) } }
                 .launchIn(viewModelScope)
         }
     }

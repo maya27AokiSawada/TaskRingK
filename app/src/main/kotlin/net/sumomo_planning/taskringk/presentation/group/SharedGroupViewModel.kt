@@ -67,9 +67,10 @@ class SharedGroupViewModel @Inject constructor(
 
     private fun startObservingGroups(uid: String) {
         groupsJob?.cancel()
+        _uiState.update { it.copy(isLoading = true) }
         groupsJob = observeGroupsUseCase(uid)
             .onEach { groups ->
-                _uiState.update { it.copy(groups = groups, isLoading = false) }
+                _uiState.update { it.copy(groups = groups, isLoading = false, errorMessage = null) }
             }
             .catch {
                 _uiState.update { it.copy(errorMessage = "グループ取得に失敗しました", isLoading = false) }
