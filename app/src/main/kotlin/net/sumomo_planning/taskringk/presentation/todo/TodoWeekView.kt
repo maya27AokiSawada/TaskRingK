@@ -31,6 +31,9 @@ import net.sumomo_planning.taskringk.domain.model.SharedItem
 fun TodoWeekView(
     items: List<SharedItem>,
     weekStart: LocalDate,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zone = ZoneId.systemDefault()
@@ -67,6 +70,9 @@ fun TodoWeekView(
                             MaterialTheme.colorScheme.error
                         else
                             MaterialTheme.colorScheme.onSurface,
+                        onTogglePurchased = onTogglePurchased,
+                        onEditItem = onEditItem,
+                        onRemoveItem = onRemoveItem,
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
@@ -78,7 +84,12 @@ fun TodoWeekView(
                 SectionHeader(label = "期限なし")
             }
             items(noDeadlineItems, key = { "none_${it.itemId}" }) { item ->
-                TodoItemRow(item = item)
+                TodoItemRow(
+                    item = item,
+                    onTogglePurchased = onTogglePurchased,
+                    onEditItem = onEditItem,
+                    onRemoveItem = onRemoveItem,
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }

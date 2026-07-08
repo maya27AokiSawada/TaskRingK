@@ -52,6 +52,9 @@ import net.sumomo_planning.taskringk.domain.model.SharedItem
 fun TodoMonthView(
     items: List<SharedItem>,
     yearMonth: YearMonth,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zone = ZoneId.systemDefault()
@@ -128,6 +131,9 @@ fun TodoMonthView(
         SelectedDateItemList(
             date = selectedDate,
             items = selectedItems,
+            onTogglePurchased = onTogglePurchased,
+            onEditItem = onEditItem,
+            onRemoveItem = onRemoveItem,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
@@ -209,6 +215,9 @@ private fun CalendarDayCell(
 private fun SelectedDateItemList(
     date: LocalDate,
     items: List<SharedItem>,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -229,7 +238,12 @@ private fun SelectedDateItemList(
         } else {
             LazyColumn {
                 items(items, key = { it.itemId }) { item ->
-                    TodoItemRow(item = item)
+                    TodoItemRow(
+                        item = item,
+                        onTogglePurchased = onTogglePurchased,
+                        onEditItem = onEditItem,
+                        onRemoveItem = onRemoveItem,
+                    )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                 }
             }

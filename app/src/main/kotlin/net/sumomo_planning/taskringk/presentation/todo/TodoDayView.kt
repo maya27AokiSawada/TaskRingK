@@ -12,13 +12,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.time.ZoneId
@@ -37,6 +42,9 @@ import net.sumomo_planning.taskringk.presentation.shoppinglist.toDeadlineLabel
 fun TodoDayView(
     items: List<SharedItem>,
     selectedDate: LocalDate,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val zone = ZoneId.systemDefault()
@@ -73,7 +81,13 @@ fun TodoDayView(
                 )
             }
             items(overdueItems, key = { it.itemId }) { item ->
-                TodoItemRow(item = item, accentColor = MaterialTheme.colorScheme.error)
+                TodoItemRow(
+                    item = item,
+                    accentColor = MaterialTheme.colorScheme.error,
+                    onTogglePurchased = onTogglePurchased,
+                    onEditItem = onEditItem,
+                    onRemoveItem = onRemoveItem,
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -81,7 +95,12 @@ fun TodoDayView(
         if (dueTodayItems.isNotEmpty()) {
             item { SectionHeader(label = if (selectedDate == today) "今日" else selectedDate.toString()) }
             items(dueTodayItems, key = { it.itemId }) { item ->
-                TodoItemRow(item = item)
+                TodoItemRow(
+                    item = item,
+                    onTogglePurchased = onTogglePurchased,
+                    onEditItem = onEditItem,
+                    onRemoveItem = onRemoveItem,
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -89,7 +108,12 @@ fun TodoDayView(
         if (noDeadlineItems.isNotEmpty()) {
             item { SectionHeader(label = "期限なし") }
             items(noDeadlineItems, key = { it.itemId }) { item ->
-                TodoItemRow(item = item)
+                TodoItemRow(
+                    item = item,
+                    onTogglePurchased = onTogglePurchased,
+                    onEditItem = onEditItem,
+                    onRemoveItem = onRemoveItem,
+                )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
@@ -117,6 +141,9 @@ internal fun SectionHeader(
 @Composable
 internal fun TodoItemRow(
     item: SharedItem,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     accentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface,
     modifier: Modifier = Modifier,
 ) {
@@ -126,11 +153,20 @@ internal fun TodoItemRow(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Checkbox(
+            checked = item.isPurchased,
+            onCheckedChange = { onTogglePurchased(item) },
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = accentColor,
+                color = if (item.isPurchased) {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                } else {
+                    accentColor
+                },
+                textDecoration = if (item.isPurchased) TextDecoration.LineThrough else TextDecoration.None,
             )
             item.deadline?.let { dl ->
                 Text(
@@ -145,6 +181,18 @@ internal fun TodoItemRow(
                 text = "×${item.quantity}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        IconButton(onClick = { onEditItem(item) }) {
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "アイテムを編集",
+            )
+        }
+        IconButton(onClick = { onRemoveItem(item.itemId) }) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "アイテムを削除",
             )
         }
     }

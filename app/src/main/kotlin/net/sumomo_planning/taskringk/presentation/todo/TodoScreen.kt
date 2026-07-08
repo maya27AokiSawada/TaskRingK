@@ -45,6 +45,9 @@ import net.sumomo_planning.taskringk.domain.model.SharedItem
 @Composable
 fun TodoScreen(
     items: List<SharedItem>,
+    onTogglePurchased: (SharedItem) -> Unit,
+    onEditItem: (SharedItem) -> Unit,
+    onRemoveItem: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var viewMode by rememberSaveable { mutableStateOf(TodoViewMode.DAY) }
@@ -89,6 +92,9 @@ fun TodoScreen(
             TodoViewMode.DAY -> TodoDayView(
                 items = items,
                 selectedDate = currentDate,
+                onTogglePurchased = onTogglePurchased,
+                onEditItem = onEditItem,
+                onRemoveItem = onRemoveItem,
                 modifier = Modifier.fillMaxSize(),
             )
             TodoViewMode.WEEK -> TodoWeekView(
@@ -96,11 +102,17 @@ fun TodoScreen(
                 weekStart = currentDate.with(
                     java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
                 ),
+                onTogglePurchased = onTogglePurchased,
+                onEditItem = onEditItem,
+                onRemoveItem = onRemoveItem,
                 modifier = Modifier.fillMaxSize(),
             )
             TodoViewMode.MONTH -> TodoMonthView(
                 items = items,
                 yearMonth = YearMonth.from(currentDate),
+                onTogglePurchased = onTogglePurchased,
+                onEditItem = onEditItem,
+                onRemoveItem = onRemoveItem,
                 modifier = Modifier.fillMaxSize(),
             )
         }

@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,6 +43,8 @@ import net.sumomo_planning.taskringk.domain.model.SharedItem
 fun ShoppingListView(
     items: List<SharedItem>,
     onTogglePurchased: (SharedItem) -> Unit = {},
+    onEditItem: (SharedItem) -> Unit = {},
+    onRemoveItem: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {
@@ -52,7 +57,12 @@ fun ShoppingListView(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp),
     ) {
         items(items = items, key = { it.itemId }) { item ->
-            ShoppingItemRow(item = item, onTogglePurchased = { onTogglePurchased(item) })
+            ShoppingItemRow(
+                item = item,
+                onTogglePurchased = { onTogglePurchased(item) },
+                onEditItem = { onEditItem(item) },
+                onRemoveItem = { onRemoveItem(item.itemId) },
+            )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
     }
@@ -64,6 +74,8 @@ fun ShoppingListView(
 private fun ShoppingItemRow(
     item: SharedItem,
     onTogglePurchased: () -> Unit,
+    onEditItem: () -> Unit,
+    onRemoveItem: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -105,6 +117,18 @@ private fun ShoppingItemRow(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+            IconButton(onClick = onEditItem) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "アイテムを編集",
+                )
+            }
+            IconButton(onClick = onRemoveItem) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "アイテムを削除",
                 )
             }
         }

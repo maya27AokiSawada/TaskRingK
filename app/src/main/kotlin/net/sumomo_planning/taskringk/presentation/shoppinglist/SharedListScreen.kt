@@ -83,6 +83,7 @@ fun SharedListScreen(
     var showAddItemDialog by rememberSaveable { mutableStateOf(false) }
     var showCreateListDialog by rememberSaveable { mutableStateOf(false) }
     var listToDelete by remember { mutableStateOf<SharedList?>(null) }
+    var itemToEdit by remember { mutableStateOf<SharedItem?>(null) }
 
     // listKind タブはリスト選択後に currentList.listKind から初期値を取得
     var listKind by rememberSaveable(uiState.selectedListId) {
@@ -202,10 +203,15 @@ fun SharedListScreen(
                         ListKind.SHOPPING_LIST -> ShoppingListView(
                             items = items,
                             onTogglePurchased = viewModel::togglePurchased,
+                            onEditItem = { itemToEdit = it },
+                            onRemoveItem = viewModel::removeItem,
                             modifier = Modifier.fillMaxSize(),
                         )
                         ListKind.TO_DO_LIST -> TodoScreen(
                             items = items,
+                            onTogglePurchased = viewModel::togglePurchased,
+                            onEditItem = { itemToEdit = it },
+                            onRemoveItem = viewModel::removeItem,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -232,6 +238,18 @@ fun SharedListScreen(
             onConfirm = { name ->
                 viewModel.createList(name)
                 showCreateListDialog = false
+            },
+        )
+    }
+
+    itemToEdit?.let { item ->
+        EditItemDialog(
+            initialName = item.name,
+            initialQuantity = item.quantity,
+            onDismiss = { itemToEdit = null },
+            onConfirm = { name, quantity ->
+                viewModel.updateItem(item.copy(name = name, quantity = quantity))
+                itemToEdit = null
             },
         )
     }
@@ -426,6 +444,56 @@ private fun CreateListDialog(
                 onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
                 enabled = name.isNotBlank(),
             ) { Text("作成") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("キャンセル") }
+        },
+    )
+}
+
+@Composable
+private fun EditItemDialog(
+    initialName: String,
+    initialQuantity: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (name: String, quantity: Int) -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(initialName) }
+    var quantityText by rememberSaveable { mutableStateOf(initialQuantity.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("アイテムを編集") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("アイテム名") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                )
+                OutlinedTextField(
+                    value = quantityText,
+                    onValueChange = { quantityText = it.filter { c -> c.isDigit() } },
+                    label = { Text("数量") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        val qty = quantityText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                        if (name.isNotBlank()) onConfirm(name.trim(), qty)
+                    }),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val qty = quantityText.toIntOrNull()?.coerceAtLeast(1) ?: 1
+                    if (name.isNotBlank()) onConfirm(name.trim(), qty)
+                },
+                enabled = name.isNotBlank(),
+            ) { Text("更新") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("キャンセル") }
