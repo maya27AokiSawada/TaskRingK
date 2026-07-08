@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.sumomo_planning.taskringk.core.ui.OfflineBanner
 import net.sumomo_planning.taskringk.domain.model.GroupType
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SharedGroupRole
@@ -87,40 +88,44 @@ fun SharedGroupScreen(
             }
         },
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            when {
-                uiState.isLoading && uiState.groups.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+            OfflineBanner(isOnline = uiState.isOnline)
 
-                uiState.groups.isEmpty() -> {
-                    EmptyGroupsPlaceholder(modifier = Modifier.align(Alignment.Center))
-                }
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    uiState.isLoading && uiState.groups.isEmpty() -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
 
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 8.dp,
-                        ),
-                    ) {
-                        items(
-                            items = uiState.groups,
-                            key = { it.groupId },
-                        ) { group ->
-                            GroupCard(
-                                group = group,
-                                currentUid = uiState.currentUser?.uid ?: "",
-                                currentUserEmail = uiState.currentUser?.email ?: "",
-                                onDeleteRequested = { groupToDelete = group },
-                                onLeaveRequested = { groupToLeave = group },
-                            )
+                    uiState.groups.isEmpty() -> {
+                        EmptyGroupsPlaceholder(modifier = Modifier.align(Alignment.Center))
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 8.dp,
+                            ),
+                        ) {
+                            items(
+                                items = uiState.groups,
+                                key = { it.groupId },
+                            ) { group ->
+                                GroupCard(
+                                    group = group,
+                                    currentUid = uiState.currentUser?.uid ?: "",
+                                    currentUserEmail = uiState.currentUser?.email ?: "",
+                                    onDeleteRequested = { groupToDelete = group },
+                                    onLeaveRequested = { groupToLeave = group },
+                                )
+                            }
                         }
                     }
                 }

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import net.sumomo_planning.taskringk.core.ui.OfflineBanner
 import net.sumomo_planning.taskringk.domain.model.ListKind
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SharedItem
@@ -137,6 +138,8 @@ fun SharedListScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
+            OfflineBanner(isOnline = uiState.isOnline)
+
             // ---- グループ・リスト選択行 ----
             if (uiState.groups.isNotEmpty()) {
                 SelectorRow(

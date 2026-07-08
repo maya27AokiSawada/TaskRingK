@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.usecase.auth.ObserveAuthStateUseCase
@@ -26,6 +27,7 @@ data class SharedGroupUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val currentUser: AuthUser? = null,
+    val isOnline: Boolean = true,
 )
 
 @HiltViewModel
@@ -35,6 +37,7 @@ class SharedGroupViewModel @Inject constructor(
     private val createGroupUseCase: CreateGroupUseCase,
     private val deleteGroupUseCase: DeleteGroupUseCase,
     private val leaveGroupUseCase: LeaveGroupUseCase,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SharedGroupUiState())
@@ -54,6 +57,11 @@ class SharedGroupViewModel @Inject constructor(
                 }
             }
             .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
+            .launchIn(viewModelScope)
+
+        networkMonitor.isOnlineFlow
+            .onEach { isOnline -> _uiState.update { it.copy(isOnline = isOnline) } }
+            .catch { /* non-fatal */ }
             .launchIn(viewModelScope)
     }
 

@@ -8,11 +8,12 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.json.Json
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
 import net.sumomo_planning.taskringk.data.mapper.toDomain
 import net.sumomo_planning.taskringk.data.mapper.toEntity
@@ -30,6 +31,14 @@ import net.sumomo_planning.taskringk.domain.repository.SharedListRepository
  *  Firestore is attempted first; a failure is logged but does NOT block the
  *  local Room write, so the UI is always updated immediately.
  *
+ * Read strategy (Phase 5 — porting_spec §7 / flutter_vs_kotlin §4):
+ *  [observeListsByGroup] and [observeList] use [NetworkMonitor.isOnlineFlow]
+ *  via flatMapLatest:
+ *   - Online  → Firestore listener → cache to Room → emit
+ *   - Offline → Room cache directly
+ *   - Error   → fallback to Room
+ *  When connectivity changes the inner flow is automatically restarted.
+ *
  * Item partial update (porting_spec §12-1):
  *  [addOrUpdateItem] and [removeItem] write only `items.{itemId}` in Firestore.
  *  The local Room cache is updated optimistically.
@@ -42,40 +51,51 @@ class HybridSharedListRepositoryImpl @Inject constructor(
     private val firestoreDataSource: FirestoreSharedListDataSource,
     private val sharedListDao: SharedListDao,
     private val deviceIdService: DeviceIdService,
+    private val networkMonitor: NetworkMonitor,
     private val json: Json,
 ) : SharedListRepository {
 
-    override fun observeListsByGroup(groupId: String): Flow<List<SharedList>> = flow {
-        emitAll(
-            firestoreDataSource.observeByGroup(groupId)
-                .onEach { lists ->
-                    sharedListDao.upsertAll(lists.map { it.toEntity(json) })
-                }
-                .catch { error ->
-                    Log.w(TAG, "Firestore observeListsByGroup error — falling back to Room", error)
-                    emitAll(
-                        sharedListDao.observeByGroup(groupId)
-                            .map { entities -> entities.map { it.toDomain(json) } }
-                    )
-                }
-        )
-    }
+    override fun observeListsByGroup(groupId: String): Flow<List<SharedList>> =
+        networkMonitor.isOnlineFlow.flatMapLatest { isOnline ->
+            if (isOnline) {
+                firestoreDataSource.observeByGroup(groupId)
+                    .onEach { lists ->
+                        sharedListDao.upsertAll(lists.map { it.toEntity(json) })
+                    }
+                    .catch { error ->
+                        Log.w(TAG, "Firestore observeListsByGroup error — falling back to Room", error)
+                        emitAll(
+                            sharedListDao.observeByGroup(groupId)
+                                .map { entities -> entities.map { it.toDomain(json) } }
+                        )
+                    }
+            } else {
+                Log.d(TAG, "Offline — observeListsByGroup serving from Room cache")
+                sharedListDao.observeByGroup(groupId)
+                    .map { entities -> entities.map { it.toDomain(json) } }
+            }
+        }
 
-    override fun observeList(groupId: String, listId: String): Flow<SharedList?> = flow {
-        emitAll(
-            firestoreDataSource.observeList(groupId, listId)
-                .onEach { list ->
-                    if (list != null) sharedListDao.upsert(list.toEntity(json))
-                }
-                .catch { error ->
-                    Log.w(TAG, "Firestore observeList error — falling back to Room", error)
-                    emitAll(
-                        sharedListDao.observeById(listId)
-                            .map { entity -> entity?.toDomain(json) }
-                    )
-                }
-        )
-    }
+    override fun observeList(groupId: String, listId: String): Flow<SharedList?> =
+        networkMonitor.isOnlineFlow.flatMapLatest { isOnline ->
+            if (isOnline) {
+                firestoreDataSource.observeList(groupId, listId)
+                    .onEach { list ->
+                        if (list != null) sharedListDao.upsert(list.toEntity(json))
+                    }
+                    .catch { error ->
+                        Log.w(TAG, "Firestore observeList error — falling back to Room", error)
+                        emitAll(
+                            sharedListDao.observeById(listId)
+                                .map { entity -> entity?.toDomain(json) }
+                        )
+                    }
+            } else {
+                Log.d(TAG, "Offline — observeList serving from Room cache")
+                sharedListDao.observeById(listId)
+                    .map { entity -> entity?.toDomain(json) }
+            }
+        }
 
     override suspend fun createList(
         groupId: String,

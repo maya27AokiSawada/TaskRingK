@@ -13,6 +13,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.GroupType
 import net.sumomo_planning.taskringk.domain.model.ListKind
@@ -53,6 +54,7 @@ class SharedListViewModelTest {
     private val updateItemUseCase = mockk<UpdateItemUseCase>()
     private val removeItemUseCase = mockk<RemoveItemUseCase>()
     private val deviceIdService = mockk<DeviceIdService>()
+    private val networkMonitor = mockk<NetworkMonitor>()
 
     private val fakeUser = AuthUser(uid = "uid-1", email = "test@example.com", displayName = "テスト")
     private val groupId = "grp_001"
@@ -85,6 +87,9 @@ class SharedListViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        // Default: online
+        every { networkMonitor.isOnlineFlow } returns flowOf(true)
+        every { networkMonitor.isOnline } returns true
     }
 
     @After
@@ -104,6 +109,7 @@ class SharedListViewModelTest {
             updateItemUseCase = updateItemUseCase,
             removeItemUseCase = removeItemUseCase,
             deviceIdService = deviceIdService,
+            networkMonitor = networkMonitor,
         )
     }
 

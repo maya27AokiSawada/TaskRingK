@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SharedItem
@@ -38,6 +39,7 @@ data class SharedListUiState(
     val currentList: SharedList? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val isOnline: Boolean = true,
 )
 
 @HiltViewModel
@@ -52,6 +54,7 @@ class SharedListViewModel @Inject constructor(
     private val updateItemUseCase: UpdateItemUseCase,
     private val removeItemUseCase: RemoveItemUseCase,
     private val deviceIdService: DeviceIdService,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SharedListUiState())
@@ -81,6 +84,11 @@ class SharedListViewModel @Inject constructor(
                 }
             }
             .catch { e -> _uiState.update { it.copy(errorMessage = e.message) } }
+            .launchIn(viewModelScope)
+
+        networkMonitor.isOnlineFlow
+            .onEach { isOnline -> _uiState.update { it.copy(isOnline = isOnline) } }
+            .catch { /* non-fatal */ }
             .launchIn(viewModelScope)
     }
 

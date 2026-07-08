@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.GroupType
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
@@ -40,6 +41,7 @@ class SharedGroupViewModelTest {
     private val createGroupUseCase = mockk<CreateGroupUseCase>()
     private val deleteGroupUseCase = mockk<DeleteGroupUseCase>()
     private val leaveGroupUseCase = mockk<LeaveGroupUseCase>()
+    private val networkMonitor = mockk<NetworkMonitor>()
 
     private val fakeUser = AuthUser(uid = "uid-1", email = "test@example.com", displayName = "テスト")
     private val groupId = "grp_001"
@@ -58,7 +60,9 @@ class SharedGroupViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        // Default: no user signed in
+        // Default: online, no user signed in
+        every { networkMonitor.isOnlineFlow } returns flowOf(true)
+        every { networkMonitor.isOnline } returns true
         every { observeAuthStateUseCase() } returns flowOf(null)
     }
 
@@ -73,6 +77,7 @@ class SharedGroupViewModelTest {
         createGroupUseCase = createGroupUseCase,
         deleteGroupUseCase = deleteGroupUseCase,
         leaveGroupUseCase = leaveGroupUseCase,
+        networkMonitor = networkMonitor,
     )
 
     @Test

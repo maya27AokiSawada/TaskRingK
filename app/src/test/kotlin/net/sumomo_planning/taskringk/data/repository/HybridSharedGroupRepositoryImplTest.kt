@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedGroupDao
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
 import net.sumomo_planning.taskringk.data.local.room.entity.SharedGroupEntity
@@ -31,6 +32,7 @@ class HybridSharedGroupRepositoryImplTest {
     private val sharedGroupDao = mockk<SharedGroupDao>(relaxed = true)
     private val sharedListDao = mockk<SharedListDao>(relaxed = true)
     private val deviceIdService = mockk<DeviceIdService>()
+    private val networkMonitor = mockk<NetworkMonitor>()
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val uid = "user-uid-1"
@@ -64,11 +66,16 @@ class HybridSharedGroupRepositoryImplTest {
 
     @Before
     fun setUp() {
+        // default: online
+        every { networkMonitor.isOnlineFlow } returns flowOf(true)
+        every { networkMonitor.isOnline } returns true
+
         repository = HybridSharedGroupRepositoryImpl(
             firestoreDataSource = firestoreDataSource,
             sharedGroupDao = sharedGroupDao,
             sharedListDao = sharedListDao,
             deviceIdService = deviceIdService,
+            networkMonitor = networkMonitor,
             json = json,
         )
     }
@@ -207,5 +214,42 @@ class HybridSharedGroupRepositoryImplTest {
         result.getOrThrow()  // exposes exception if failure
         coVerify { sharedGroupDao.deleteById(groupId) }
         coVerify { sharedListDao.deleteByGroup(groupId) }
+    }
+
+    // ---- Phase 5: network-aware tests ----
+
+    @Test
+    fun `observeGroups uses Room directly when offline`() = runTest {
+        every { networkMonitor.isOnlineFlow } returns flowOf(false)
+        every { sharedGroupDao.observeAll() } returns flowOf(listOf(fakeEntity))
+
+        repository.observeGroups(uid).test {
+            val groups = awaitItem()
+            assertEquals(1, groups.size)
+            // Firestore should NOT be called when offline
+            coVerify(exactly = 0) { firestoreDataSource.observeGroups(any()) }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `observeGroups switches to Firestore when going online`() = runTest {
+        val networkFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
+        every { networkMonitor.isOnlineFlow } returns networkFlow
+        every { sharedGroupDao.observeAll() } returns flowOf(listOf(fakeEntity))
+        every { firestoreDataSource.observeGroups(uid) } returns flowOf(listOf(fakeGroup))
+
+        repository.observeGroups(uid).test {
+            // offline → Room
+            val offlineGroups = awaitItem()
+            assertEquals(groupId, offlineGroups[0].groupId)
+
+            // go online → Firestore
+            networkFlow.value = true
+            val onlineGroups = awaitItem()
+            assertEquals(groupId, onlineGroups[0].groupId)
+            coVerify { firestoreDataSource.observeGroups(uid) }
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }
