@@ -6,7 +6,7 @@
 
 # Firebase Firestore data models are mapped reflectively via toObject().
 # Keep no-arg constructors and fields of domain/DTO classes used with Firestore.
--keepclassmembers class net.sumomo_planning.goshopping.data.remote.dto.** {
+-keepclassmembers class net.sumomo_planning.taskringk.data.remote.dto.** {
     <init>();
     <fields>;
 }

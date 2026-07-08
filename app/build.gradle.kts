@@ -22,11 +22,11 @@ fun env(key: String, default: String = ""): String =
     (envProperties.getProperty(key) ?: System.getenv(key) ?: default).trim()
 
 android {
-    namespace = "net.sumomo_planning.goshopping"
+    namespace = "net.sumomo_planning.taskringk"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "net.sumomo_planning.goshopping"
+        applicationId = "net.sumomo_planning.taskringk"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
