@@ -2,7 +2,7 @@
 
 **作成日**: 2026-06-30
 **対象**: Flutter版 GoShopping (v1.1.0 / Build 16) → Kotlin (Android Native) 移植
-**ステータス**: Phase 5 実装完了（実機 2 端末検証待ち）
+**ステータス**: Phase 8 実装進行中（Phase 6/7 完了、Phase 8 は同期実装+テストまで完了）
 
 このプランは以下のドキュメントを根拠に作成しています。
 
@@ -236,6 +236,13 @@ app/src/main/kotlin/net/sumomo_planning/taskringk/
 - オフライン時も保存を中止しない（§12-11）
 
 **DoD**: 手書き→保存→他メンバーに反映。オフラインでも描画・保存が継続。
+
+**進捗メモ（2026-07-11）**
+- Whiteboard 画面・ViewModel・UseCase・Repository の縦貫通実装済み
+- Firestore 同期パス: `SharedGroups/{groupId}/whiteboards/{whiteboardId}/strokes`
+- ストロークの observe / upsert / delete / clear(batch) を実装済み
+- `HybridWhiteboardRepositoryImplTest` / `WhiteboardViewModelTest` を追加し回帰確認済み
+- 描画ツール（色・線幅・消しゴム・線端 ROUND/BUTT）を実装済み
 
 ### Phase 9: 設定 + 仕上げ（P2）
 

@@ -320,4 +320,25 @@ val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
 ---
 
+## 追加メモ（2026-07-11）
+
+### Phase 8 Firestore 同期での実装判断
+
+- ストローク保存先を `SharedGroups/{groupId}/whiteboards/{whiteboardId}/strokes` に統一
+- ストローク監視は DataSource 側で `orderBy` を使わず、クライアントで `createdAt` ソート
+- `clear` は逐次削除を避け、Firestore batch delete へ変更
+
+### UI/状態管理での気づき
+
+- Whiteboard の `committedStrokes` は ViewModel 内メモリ保持より Firestore 購読を正とする方が整合しやすい
+- Undo/Redo は「ローカル配列操作」ではなく「ストローク削除/再 upsert」でリモートと一致させる
+- 描画ツール（色・線幅・線端・消しゴム）は `UiState` で保持し、`startStroke` 時に確定値を埋めると分かりやすい
+
+### テスト観点メモ
+
+- Repository は online/offline 切替、Firestore failure fallback、委譲（upsert/delete/clear）の3軸で押さえる
+- ViewModel は endStroke での書き込み payload（色/線幅/線端/消しゴム）を `match` で検証すると回帰を防げる
+
+---
+
 **Last Updated**: 2026-01-13
