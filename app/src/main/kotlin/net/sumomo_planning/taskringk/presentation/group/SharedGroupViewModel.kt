@@ -15,12 +15,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
+import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
+import net.sumomo_planning.taskringk.domain.model.Invitation
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.usecase.auth.ObserveAuthStateUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.CreateGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.DeleteGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.LeaveGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.ObserveGroupsUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.AcceptInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.CreateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.ValidateInvitationUseCase
 
 data class SharedGroupUiState(
     val groups: List<SharedGroup> = emptyList(),
@@ -37,6 +42,9 @@ class SharedGroupViewModel @Inject constructor(
     private val createGroupUseCase: CreateGroupUseCase,
     private val deleteGroupUseCase: DeleteGroupUseCase,
     private val leaveGroupUseCase: LeaveGroupUseCase,
+    private val createInvitationUseCase: CreateInvitationUseCase,
+    private val validateInvitationUseCase: ValidateInvitationUseCase,
+    private val acceptInvitationUseCase: AcceptInvitationUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -138,5 +146,31 @@ class SharedGroupViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    suspend fun createInvitation(group: SharedGroup): Result<Invitation> {
+        val user = _uiState.value.currentUser ?: return Result.failure(IllegalStateException("Sign in required"))
+        return createInvitationUseCase(
+            group = group,
+            invitedBy = user.uid,
+            inviterName = user.displayName ?: user.uid,
+        )
+    }
+
+    suspend fun validateInvitation(groupId: String, token: String): Result<Invitation> =
+        validateInvitationUseCase(groupId, token)
+
+    suspend fun acceptInvitation(
+        groupId: String,
+        token: String,
+    ): Result<AcceptedInvitation> {
+        val user = _uiState.value.currentUser ?: return Result.failure(IllegalStateException("Sign in required"))
+        return acceptInvitationUseCase(
+            groupId = groupId,
+            token = token,
+            acceptorUid = user.uid,
+            acceptorEmail = user.email ?: "",
+            acceptorName = user.displayName ?: user.uid,
+        )
     }
 }

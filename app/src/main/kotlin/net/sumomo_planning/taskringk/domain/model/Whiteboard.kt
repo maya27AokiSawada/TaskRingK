@@ -16,9 +16,12 @@ data class DrawingStroke(
     val points: List<DrawingPoint>,
     val colorValue: Int,
     val strokeWidth: Float,
+    val strokeCapStyle: StrokeCapStyle = StrokeCapStyle.ROUND,
     val createdAt: Instant,
     val authorId: String,
     val authorName: String,
 )
 
 data class DrawingPoint(val x: Float, val y: Float)
+
+enum class StrokeCapStyle { ROUND, BUTT }

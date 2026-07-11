@@ -17,6 +17,7 @@ googleServices = "4.4.2"
 datastore = "1.1.1"
 camerax = "1.4.0"
 mlkitBarcode = "17.3.0"
+zxingCore = "3.5.3"
 junit = "4.13.2"
 junitJupiter = "5.11.3"
 mockk = "1.13.13"
@@ -80,6 +81,7 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxingCore" }
 
 # Unit testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

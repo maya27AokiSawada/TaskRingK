@@ -19,6 +19,7 @@ import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
 import net.sumomo_planning.taskringk.data.local.room.entity.SharedGroupEntity
 import net.sumomo_planning.taskringk.data.remote.firestore.FirestoreSharedGroupDataSource
 import net.sumomo_planning.taskringk.domain.model.GroupType
+import net.sumomo_planning.taskringk.domain.repository.NotificationRepository
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SyncStatus
 import org.junit.Assert.assertEquals
@@ -33,6 +34,7 @@ class HybridSharedGroupRepositoryImplTest {
     private val sharedListDao = mockk<SharedListDao>(relaxed = true)
     private val deviceIdService = mockk<DeviceIdService>()
     private val networkMonitor = mockk<NetworkMonitor>()
+    private val notificationRepository = mockk<NotificationRepository>(relaxed = true)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val uid = "user-uid-1"
@@ -69,6 +71,7 @@ class HybridSharedGroupRepositoryImplTest {
         // default: online
         every { networkMonitor.isOnlineFlow } returns flowOf(true)
         every { networkMonitor.isOnline } returns true
+        every { sharedGroupDao.observeById(groupId) } returns flowOf(fakeEntity)
 
         repository = HybridSharedGroupRepositoryImpl(
             firestoreDataSource = firestoreDataSource,
@@ -76,6 +79,7 @@ class HybridSharedGroupRepositoryImplTest {
             sharedListDao = sharedListDao,
             deviceIdService = deviceIdService,
             networkMonitor = networkMonitor,
+            notificationRepository = notificationRepository,
             json = json,
         )
     }

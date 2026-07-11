@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -54,9 +55,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import net.sumomo_planning.taskringk.core.ui.OfflineBanner
+import net.sumomo_planning.taskringk.core.common.InvitationCodeCodec
 import net.sumomo_planning.taskringk.domain.model.GroupType
+import net.sumomo_planning.taskringk.domain.model.Invitation
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SharedGroupRole
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +70,11 @@ fun SharedGroupScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
+    var inviteTargetGroup by remember { mutableStateOf<SharedGroup?>(null) }
+    var inviteToShare by remember { mutableStateOf<Invitation?>(null) }
+    var showScanner by remember { mutableStateOf(false) }
     var groupToDelete by remember { mutableStateOf<SharedGroup?>(null) }
     var groupToLeave by remember { mutableStateOf<SharedGroup?>(null) }
 
@@ -94,6 +102,17 @@ fun SharedGroupScreen(
                 .padding(innerPadding),
         ) {
             OfflineBanner(isOnline = uiState.isOnline)
+
+            androidx.compose.foundation.layout.Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(onClick = { showScanner = true }) {
+                    Text("招待を受諾")
+                }
+            }
 
             Box(modifier = Modifier.weight(1f)) {
                 when {
@@ -124,6 +143,7 @@ fun SharedGroupScreen(
                                     currentUserEmail = uiState.currentUser?.email ?: "",
                                     onDeleteRequested = { groupToDelete = group },
                                     onLeaveRequested = { groupToLeave = group },
+                                    onInviteRequested = { inviteTargetGroup = group },
                                 )
                             }
                         }
@@ -170,6 +190,54 @@ fun SharedGroupScreen(
             },
         )
     }
+
+    inviteTargetGroup?.let { group ->
+        if (inviteToShare == null) {
+            LaunchedEffect(group.groupId) {
+                val result = viewModel.createInvitation(group)
+                result.onSuccess { inviteToShare = it }
+                result.onFailure {
+                    snackbarHostState.showSnackbar(it.message ?: "招待コードの作成に失敗しました")
+                    inviteTargetGroup = null
+                }
+            }
+        }
+
+        inviteToShare?.let { invitation ->
+            InviteShareDialog(
+                invitation = invitation,
+                onDismiss = {
+                    inviteToShare = null
+                    inviteTargetGroup = null
+                },
+            )
+        }
+    }
+
+    if (showScanner) {
+        InviteScannerDialog(
+            onDismiss = { showScanner = false },
+            onCodeScanned = { rawCode ->
+                val decoded = InvitationCodeCodec.decode(rawCode)
+                if (decoded == null) {
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("招待コードを解析できませんでした")
+                    }
+                } else {
+                    coroutineScope.launch {
+                        showScanner = false
+                        viewModel.acceptInvitation(decoded.groupId, decoded.token)
+                            .onSuccess {
+                                snackbarHostState.showSnackbar("招待を受諾しました")
+                            }
+                            .onFailure {
+                                snackbarHostState.showSnackbar(it.message ?: "招待の受諾に失敗しました")
+                            }
+                    }
+                }
+            },
+        )
+    }
 }
 
 // ---- Private composables ----
@@ -209,6 +277,7 @@ private fun GroupCard(
     currentUserEmail: String,
     onDeleteRequested: () -> Unit,
     onLeaveRequested: () -> Unit,
+    onInviteRequested: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isOwner = group.ownerUid == currentUid
@@ -253,6 +322,13 @@ private fun GroupCard(
                     onDismissRequest = { showMenu = false },
                 ) {
                     if (isOwner) {
+                        DropdownMenuItem(
+                            text = { Text("招待") },
+                            onClick = {
+                                showMenu = false
+                                onInviteRequested()
+                            },
+                        )
                         // Owner can delete the group (§3-4)
                         DropdownMenuItem(
                             text = { Text("削除", color = MaterialTheme.colorScheme.error) },

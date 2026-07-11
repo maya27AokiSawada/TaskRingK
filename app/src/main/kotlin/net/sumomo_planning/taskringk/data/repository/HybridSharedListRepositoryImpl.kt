@@ -4,6 +4,7 @@ import android.util.Log
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -11,17 +12,22 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.common.NotificationFactory
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
+import net.sumomo_planning.taskringk.data.local.room.dao.SharedGroupDao
 import net.sumomo_planning.taskringk.data.mapper.toDomain
 import net.sumomo_planning.taskringk.data.mapper.toEntity
 import net.sumomo_planning.taskringk.data.remote.firestore.FirestoreSharedListDataSource
 import net.sumomo_planning.taskringk.domain.model.ListKind
 import net.sumomo_planning.taskringk.domain.model.ListType
+import net.sumomo_planning.taskringk.domain.model.NotificationType
 import net.sumomo_planning.taskringk.domain.model.SharedItem
 import net.sumomo_planning.taskringk.domain.model.SharedList
+import net.sumomo_planning.taskringk.domain.repository.NotificationRepository
 import net.sumomo_planning.taskringk.domain.repository.SharedListRepository
 
 /**
@@ -47,11 +53,14 @@ import net.sumomo_planning.taskringk.domain.repository.SharedListRepository
  *  [removeItem] sets isDeleted=true; the item is never physically deleted.
  */
 @Singleton
+@OptIn(ExperimentalCoroutinesApi::class)
 class HybridSharedListRepositoryImpl @Inject constructor(
     private val firestoreDataSource: FirestoreSharedListDataSource,
     private val sharedListDao: SharedListDao,
+    private val sharedGroupDao: SharedGroupDao,
     private val deviceIdService: DeviceIdService,
     private val networkMonitor: NetworkMonitor,
+    private val notificationRepository: NotificationRepository,
     private val json: Json,
 ) : SharedListRepository {
 
@@ -104,6 +113,8 @@ class HybridSharedListRepositoryImpl @Inject constructor(
         description: String,
         ownerUid: String,
     ): Result<SharedList> = runCatching {
+        val group = sharedGroupDao.observeById(groupId).firstOrNull()?.toDomain(json)
+
         val devicePrefix = ownerUid.take(8)
         val listId = deviceIdService.generateListId(devicePrefix)
         val now = Instant.now()
@@ -126,13 +137,50 @@ class HybridSharedListRepositoryImpl @Inject constructor(
         runCatching { firestoreDataSource.createList(groupId, list) }
             .onFailure { Log.w(TAG, "Firestore createList failed (non-fatal)", it) }
 
+        group?.let { sharedGroup ->
+            val recipients = sharedGroup.allowedUid.filterNot { recipientUid -> recipientUid == ownerUid }
+            if (recipients.isNotEmpty()) {
+                notificationRepository.createNotifications(
+                    recipients.map { recipientUid ->
+                        NotificationFactory.create(
+                            userId = recipientUid,
+                            type = NotificationType.LIST_CREATED,
+                            groupId = groupId,
+                            listId = listId,
+                            message = "${sharedGroup.groupName} に新しいリスト『$listName』が作成されました",
+                        )
+                    }
+                )
+            }
+        }
+
         sharedListDao.upsert(list.toEntity(json))
         list
     }
 
     override suspend fun deleteList(groupId: String, listId: String): Result<Unit> = runCatching {
+        val group = sharedGroupDao.observeById(groupId).firstOrNull()?.toDomain(json)
+        val list = sharedListDao.observeById(listId).firstOrNull()?.toDomain(json)
+
         runCatching { firestoreDataSource.deleteList(groupId, listId) }
             .onFailure { Log.w(TAG, "Firestore deleteList failed (non-fatal)", it) }
+
+        if (group != null && list != null) {
+            val recipients = group.allowedUid.filterNot { recipientUid -> recipientUid == list.ownerUid }
+            if (recipients.isNotEmpty()) {
+                notificationRepository.createNotifications(
+                    recipients.map { recipientUid ->
+                        NotificationFactory.create(
+                            userId = recipientUid,
+                            type = NotificationType.LIST_DELETED,
+                            groupId = groupId,
+                            listId = listId,
+                            message = "${group.groupName} のリスト『${list.listName}』が削除されました",
+                        )
+                    }
+                )
+            }
+        }
 
         sharedListDao.deleteById(listId)
     }

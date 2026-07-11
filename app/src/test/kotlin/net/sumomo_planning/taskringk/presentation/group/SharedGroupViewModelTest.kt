@@ -22,6 +22,9 @@ import net.sumomo_planning.taskringk.domain.usecase.group.CreateGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.DeleteGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.LeaveGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.ObserveGroupsUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.AcceptInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.CreateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.ValidateInvitationUseCase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,6 +44,9 @@ class SharedGroupViewModelTest {
     private val createGroupUseCase = mockk<CreateGroupUseCase>()
     private val deleteGroupUseCase = mockk<DeleteGroupUseCase>()
     private val leaveGroupUseCase = mockk<LeaveGroupUseCase>()
+    private val createInvitationUseCase = mockk<CreateInvitationUseCase>()
+    private val validateInvitationUseCase = mockk<ValidateInvitationUseCase>()
+    private val acceptInvitationUseCase = mockk<AcceptInvitationUseCase>()
     private val networkMonitor = mockk<NetworkMonitor>()
 
     private val fakeUser = AuthUser(uid = "uid-1", email = "test@example.com", displayName = "テスト")
@@ -77,6 +83,9 @@ class SharedGroupViewModelTest {
         createGroupUseCase = createGroupUseCase,
         deleteGroupUseCase = deleteGroupUseCase,
         leaveGroupUseCase = leaveGroupUseCase,
+        createInvitationUseCase = createInvitationUseCase,
+        validateInvitationUseCase = validateInvitationUseCase,
+        acceptInvitationUseCase = acceptInvitationUseCase,
         networkMonitor = networkMonitor,
     )
 

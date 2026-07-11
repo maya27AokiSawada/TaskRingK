@@ -4,14 +4,17 @@ import android.util.Log
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
+import net.sumomo_planning.taskringk.core.common.NotificationFactory
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedGroupDao
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
@@ -19,10 +22,12 @@ import net.sumomo_planning.taskringk.data.mapper.toDomain
 import net.sumomo_planning.taskringk.data.mapper.toEntity
 import net.sumomo_planning.taskringk.data.remote.firestore.FirestoreSharedGroupDataSource
 import net.sumomo_planning.taskringk.domain.model.InvitationStatus
+import net.sumomo_planning.taskringk.domain.model.NotificationType
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SharedGroupMember
 import net.sumomo_planning.taskringk.domain.model.SharedGroupRole
 import net.sumomo_planning.taskringk.domain.model.SyncStatus
+import net.sumomo_planning.taskringk.domain.repository.NotificationRepository
 import net.sumomo_planning.taskringk.domain.repository.SharedGroupRepository
 
 /**
@@ -45,12 +50,14 @@ import net.sumomo_planning.taskringk.domain.repository.SharedGroupRepository
  *  Firestore.
  */
 @Singleton
+@OptIn(ExperimentalCoroutinesApi::class)
 class HybridSharedGroupRepositoryImpl @Inject constructor(
     private val firestoreDataSource: FirestoreSharedGroupDataSource,
     private val sharedGroupDao: SharedGroupDao,
     private val sharedListDao: SharedListDao,
     private val deviceIdService: DeviceIdService,
     private val networkMonitor: NetworkMonitor,
+    private val notificationRepository: NotificationRepository,
     private val json: Json,
 ) : SharedGroupRepository {
 
@@ -116,6 +123,24 @@ class HybridSharedGroupRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteGroup(groupId: String): Result<Unit> = runCatching {
+        val group = sharedGroupDao.observeById(groupId).firstOrNull()?.toDomain(json)
+
+        group?.let {
+            val recipients = it.allowedUid.filterNot { uid -> uid == it.ownerUid }
+            if (recipients.isNotEmpty()) {
+                notificationRepository.createNotifications(
+                    recipients.map { recipientUid ->
+                        NotificationFactory.create(
+                            userId = recipientUid,
+                            type = NotificationType.GROUP_DELETED,
+                            groupId = it.groupId,
+                            message = "グループ『${it.groupName}』が削除されました",
+                        )
+                    }
+                )
+            }
+        }
+
         // Firestore first; failure is non-fatal
         runCatching { firestoreDataSource.deleteGroup(groupId) }
             .onFailure { Log.w(TAG, "Firestore deleteGroup failed (non-fatal)", it) }
@@ -130,6 +155,25 @@ class HybridSharedGroupRepositoryImpl @Inject constructor(
         uid: String,
         memberId: String,
     ): Result<Unit> = runCatching {
+        val group = sharedGroupDao.observeById(groupId).firstOrNull()?.toDomain(json)
+
+        group?.let {
+            val leaverName = it.members.firstOrNull { member -> member.memberId == memberId }?.name ?: memberId
+            val recipients = it.allowedUid.filterNot { recipientUid -> recipientUid == uid }
+            if (recipients.isNotEmpty()) {
+                notificationRepository.createNotifications(
+                    recipients.map { recipientUid ->
+                        NotificationFactory.create(
+                            userId = recipientUid,
+                            type = NotificationType.MEMBER_LEFT,
+                            groupId = it.groupId,
+                            message = "$leaverName さんがグループから離脱しました",
+                        )
+                    }
+                )
+            }
+        }
+
         // Firestore first; failure is non-fatal
         runCatching { firestoreDataSource.leaveGroup(groupId, uid, memberId) }
             .onFailure { Log.w(TAG, "Firestore leaveGroup failed (non-fatal)", it) }

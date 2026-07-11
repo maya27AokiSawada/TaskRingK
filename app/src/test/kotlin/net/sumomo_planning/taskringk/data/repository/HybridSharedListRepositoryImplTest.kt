@@ -14,13 +14,16 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import net.sumomo_planning.taskringk.core.common.DeviceIdService
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
+import net.sumomo_planning.taskringk.data.local.room.dao.SharedGroupDao
 import net.sumomo_planning.taskringk.data.local.room.dao.SharedListDao
+import net.sumomo_planning.taskringk.data.local.room.entity.SharedGroupEntity
 import net.sumomo_planning.taskringk.data.local.room.entity.SharedListEntity
 import net.sumomo_planning.taskringk.data.remote.firestore.FirestoreSharedListDataSource
 import net.sumomo_planning.taskringk.domain.model.ListKind
 import net.sumomo_planning.taskringk.domain.model.ListType
 import net.sumomo_planning.taskringk.domain.model.SharedItem
 import net.sumomo_planning.taskringk.domain.model.SharedList
+import net.sumomo_planning.taskringk.domain.repository.NotificationRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -30,8 +33,10 @@ class HybridSharedListRepositoryImplTest {
 
     private val firestoreDataSource = mockk<FirestoreSharedListDataSource>()
     private val sharedListDao = mockk<SharedListDao>(relaxed = true)
+    private val sharedGroupDao = mockk<SharedGroupDao>(relaxed = true)
     private val deviceIdService = mockk<DeviceIdService>()
     private val networkMonitor = mockk<NetworkMonitor>()
+    private val notificationRepository = mockk<NotificationRepository>(relaxed = true)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     private val groupId = "grp_001"
@@ -66,6 +71,18 @@ class HybridSharedListRepositoryImplTest {
         updatedAt = null,
     )
 
+    private val fakeGroupEntity = SharedGroupEntity(
+        groupId = groupId,
+        groupName = "家族",
+        ownerUid = ownerUid,
+        allowedUid = listOf(ownerUid),
+        membersJson = "[]",
+        groupType = "shopping",
+        syncStatus = "synced",
+        createdAt = 0L,
+        updatedAt = null,
+    )
+
     private lateinit var repository: HybridSharedListRepositoryImpl
 
     @Before
@@ -73,12 +90,16 @@ class HybridSharedListRepositoryImplTest {
         // default: online
         every { networkMonitor.isOnlineFlow } returns flowOf(true)
         every { networkMonitor.isOnline } returns true
+        every { sharedGroupDao.observeById(groupId) } returns flowOf(fakeGroupEntity)
+        every { sharedListDao.observeById(listId) } returns flowOf(fakeEntity)
 
         repository = HybridSharedListRepositoryImpl(
             firestoreDataSource = firestoreDataSource,
             sharedListDao = sharedListDao,
+            sharedGroupDao = sharedGroupDao,
             deviceIdService = deviceIdService,
             networkMonitor = networkMonitor,
+            notificationRepository = notificationRepository,
             json = json,
         )
     }
