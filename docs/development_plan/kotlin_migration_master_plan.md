@@ -244,6 +244,12 @@ app/src/main/kotlin/net/sumomo_planning/taskringk/
 - `HybridWhiteboardRepositoryImplTest` / `WhiteboardViewModelTest` を追加し回帰確認済み
 - 描画ツール（色・線幅・消しゴム・線端 ROUND/BUTT）を実装済み
 
+**進捗メモ（2026-07-14）**
+- Firestore ルールを `firebase/firestore.rules` に追加し、whiteboards / strokes の権限制御を明文化
+- Phase 8 検証スクリプト `scripts/phase8-validation.ps1` を追加（ユニットテスト実行 + 2端末準備チェック）
+- 実機2端末手順を `docs/testing/phase8_validation.md` に追加し、検証観点を固定化
+- 未完了: JDK 21 環境で `phase8-validation.ps1` を実行し、実機2端末シナリオを完了すること
+
 ### Phase 9: 設定 + 仕上げ（P2）
 
 **成果物**

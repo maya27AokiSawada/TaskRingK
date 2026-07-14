@@ -83,6 +83,51 @@ git clone https://github.com/maya27AokiSawada/go_shop_kotlin.git
 ./gradlew installDebug
 ```
 
+## 公開前の機密情報チェック
+
+リポジトリを Public にする前に、以下の自動チェックを実行してください。
+
+```powershell
+./scripts/security-preflight.ps1
+```
+
+このスクリプトは次を検査します。
+- 追跡中ファイルに `.env` や `app/google-services.json` などが含まれていないこと
+- 追跡中ソースに API キーや秘密鍵パターンがないこと
+- Git 履歴に高リスクなキー痕跡が残っていないこと
+
+加えて GitHub Actions の `Security Checks` ワークフローで、PR / main push 時に
+同じ preflight と gitleaks を自動実行します。
+
+main ブランチの必須チェック化は、GitHub CLI ログイン後に次で適用できます。
+
+```powershell
+gh auth login
+./scripts/apply-branch-protection.ps1
+```
+
+デフォルトは `maya27AokiSawada/TaskRingK` の `main` に適用します。
+Private リポジトリの場合、GitHub プランによっては Branch protection が 403 で拒否されます。
+その場合は Public 化後に同コマンドを再実行してください。
+
+## Firestore ルールと Phase 8 検証
+
+Firestore のセキュリティルールは `firebase/firestore.rules` に定義しています。
+
+Phase 8（Whiteboard同期）の検証は次で実行できます。
+
+```powershell
+./scripts/phase8-validation.ps1
+```
+
+手動チェック項目は `docs/testing/phase8_validation.md` を参照してください。
+
+Firestore ルール反映:
+
+```powershell
+./scripts/deploy-firestore-rules.ps1 -ProjectId <your-firebase-project-id>
+```
+
 ## Flutter版との設計比較
 
 詳細は [docs/flutter_vs_kotlin.md](docs/flutter_vs_kotlin.md) を参照してください。

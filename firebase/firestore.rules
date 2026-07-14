@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function currentUid() {
+      return request.auth.uid;
+    }
+
+    function groupDoc(groupId) {
+      return get(/databases/$(database)/documents/SharedGroups/$(groupId));
+    }
+
+    function groupExists(groupId) {
+      return exists(/databases/$(database)/documents/SharedGroups/$(groupId));
+    }
+
+    function groupMember(groupId) {
+      return groupExists(groupId) &&
+        currentUid() in groupDoc(groupId).data.allowedUid;
+    }
+
+    function groupOwner(groupId) {
+      return groupExists(groupId) &&
+        groupDoc(groupId).data.ownerUid == currentUid();
+    }
+
+    function allowedJoinUpdate(groupId) {
+      return signedIn() &&
+        !groupMember(groupId) &&
+        !(currentUid() in resource.data.allowedUid) &&
+        request.resource.data.groupId == resource.data.groupId &&
+        request.resource.data.groupName == resource.data.groupName &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        request.resource.data.groupType == resource.data.groupType &&
+        request.resource.data.syncStatus == resource.data.syncStatus &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.allowedUid.size() >= resource.data.allowedUid.size() &&
+        request.resource.data.members.size() >= resource.data.members.size() &&
+        request.resource.data.allowedUid.hasAll(resource.data.allowedUid) &&
+        request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'allowedUid',
+          'members',
+          'updatedAt'
+        ]) &&
+        currentUid() in request.resource.data.allowedUid;
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && uid == currentUid();
+      allow create, update: if signedIn() && uid == currentUid();
+      allow delete: if false;
+    }
+
+    match /SharedGroups/{groupId} {
+      allow read: if signedIn() && groupMember(groupId);
+      allow create: if signedIn() &&
+        request.resource.data.groupId == groupId &&
+        request.resource.data.ownerUid == currentUid() &&
+        currentUid() in request.resource.data.allowedUid;
+      allow update: if (signedIn() && groupMember(groupId)) || allowedJoinUpdate(groupId);
+      allow delete: if signedIn() && groupOwner(groupId);
+
+      match /sharedLists/{listId} {
+        allow read, create, update, delete: if signedIn() && groupMember(groupId);
+      }
+
+      match /invitations/{token} {
+        allow read: if signedIn();
+        allow create: if signedIn() && groupMember(groupId);
+        allow update: if signedIn() &&
+          (
+            groupMember(groupId) ||
+            (
+              request.resource.data.groupId == resource.data.groupId &&
+              request.resource.data.groupName == resource.data.groupName &&
+              request.resource.data.invitedBy == resource.data.invitedBy &&
+              request.resource.data.inviterName == resource.data.inviterName &&
+              request.resource.data.token == resource.data.token &&
+              request.resource.data.maxUses == resource.data.maxUses &&
+              request.resource.data.currentUses == resource.data.currentUses + 1 &&
+              currentUid() in request.resource.data.usedBy
+            )
+          );
+        allow delete: if signedIn() && groupOwner(groupId);
+      }
+
+      match /whiteboards/{whiteboardId} {
+        allow read: if signedIn() && groupMember(groupId);
+        allow create: if signedIn() && groupMember(groupId) &&
+          request.resource.data.groupId == groupId &&
+          request.resource.data.whiteboardId == whiteboardId;
+        allow update, delete: if signedIn() && groupMember(groupId);
+
+        match /strokes/{strokeId} {
+          allow read: if signedIn() && groupMember(groupId);
+          allow create: if signedIn() && groupMember(groupId) &&
+            request.resource.data.strokeId == strokeId &&
+            request.resource.data.authorId == currentUid();
+          allow update: if signedIn() && groupMember(groupId) &&
+            resource.data.authorId == currentUid() &&
+            request.resource.data.authorId == resource.data.authorId;
+          allow delete: if signedIn() && groupMember(groupId) &&
+            (resource.data.authorId == currentUid() || groupOwner(groupId));
+        }
+      }
+    }
+
+    match /Notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == currentUid();
+      allow create: if signedIn() &&
+        groupMember(request.resource.data.groupId) &&
+        request.resource.data.userId != null;
+      allow update: if signedIn() &&
+        resource.data.userId == currentUid() &&
+        request.resource.data.userId == resource.data.userId;
+      allow delete: if false;
+    }
+  }
+}
