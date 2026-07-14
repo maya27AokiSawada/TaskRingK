@@ -8,9 +8,7 @@ import kotlinx.coroutines.tasks.await
 import net.sumomo_planning.taskringk.data.mapper.toDomain
 import net.sumomo_planning.taskringk.data.mapper.toFirestoreMap
 import net.sumomo_planning.taskringk.data.mapper.toMemberMap
-import net.sumomo_planning.taskringk.data.mapper.toUpdateMap
 import net.sumomo_planning.taskringk.data.remote.dto.InvitationDto
-import net.sumomo_planning.taskringk.data.remote.dto.SharedGroupDto
 import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
 import net.sumomo_planning.taskringk.domain.model.Invitation
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
@@ -66,13 +64,6 @@ class FirestoreInvitationDataSource @Inject constructor(
         acceptorName: String,
     ): AcceptedInvitation {
         val groupRef = groupsCollection.document(invitation.groupId)
-        val groupSnapshot = groupRef.get().await()
-        val groupDto = groupSnapshot.toObject(SharedGroupDto::class.java)
-            ?: throw IllegalStateException("Group not found")
-
-        if (groupDto.allowedUid.contains(acceptorUid)) {
-            throw IllegalStateException("You are already a member of this group")
-        }
 
         val now = java.time.Instant.now()
         val member = SharedGroupMember(
@@ -86,12 +77,10 @@ class FirestoreInvitationDataSource @Inject constructor(
             securityKey = invitation.securityKey,
         )
 
-        val updatedMembers = groupDto.members.map { it.toUpdateMap() } + member.toMemberMap()
-
         groupRef.update(
             mapOf(
                 "allowedUid" to FieldValue.arrayUnion(acceptorUid),
-                "members" to updatedMembers,
+                "members" to FieldValue.arrayUnion(member.toMemberMap()),
                 "updatedAt" to FieldValue.serverTimestamp(),
             )
         ).await()
