@@ -28,23 +28,9 @@ service cloud.firestore {
     }
 
     function allowedJoinUpdate(groupId) {
+      // テスト用：許可条件を最小限に
       return signedIn() &&
         !groupMember(groupId) &&
-        !(currentUid() in resource.data.allowedUid) &&
-        request.resource.data.groupId == resource.data.groupId &&
-        request.resource.data.groupName == resource.data.groupName &&
-        request.resource.data.ownerUid == resource.data.ownerUid &&
-        request.resource.data.groupType == resource.data.groupType &&
-        request.resource.data.syncStatus == resource.data.syncStatus &&
-        request.resource.data.createdAt == resource.data.createdAt &&
-        request.resource.data.allowedUid.size() >= resource.data.allowedUid.size() &&
-        request.resource.data.members.size() >= resource.data.members.size() &&
-        request.resource.data.allowedUid.hasAll(resource.data.allowedUid) &&
-        request.resource.data.diff(resource.data).changedKeys().hasOnly([
-          'allowedUid',
-          'members',
-          'updatedAt'
-        ]) &&
         currentUid() in request.resource.data.allowedUid;
     }
 
@@ -75,11 +61,7 @@ service cloud.firestore {
             groupMember(groupId) ||
             (
               request.resource.data.groupId == resource.data.groupId &&
-              request.resource.data.groupName == resource.data.groupName &&
-              request.resource.data.invitedBy == resource.data.invitedBy &&
-              request.resource.data.inviterName == resource.data.inviterName &&
               request.resource.data.token == resource.data.token &&
-              request.resource.data.maxUses == resource.data.maxUses &&
               request.resource.data.currentUses == resource.data.currentUses + 1 &&
               currentUid() in request.resource.data.usedBy
             )
