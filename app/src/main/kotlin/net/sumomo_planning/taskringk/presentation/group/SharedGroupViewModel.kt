@@ -173,4 +173,9 @@ class SharedGroupViewModel @Inject constructor(
             acceptorName = user.displayName ?: user.uid,
         )
     }
+
+    fun refreshGroupsAfterAcceptance() {
+        val user = _uiState.value.currentUser ?: return
+        startObservingGroups(user.uid)
+    }
 }

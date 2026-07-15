@@ -229,6 +229,8 @@ fun SharedGroupScreen(
                         viewModel.acceptInvitation(decoded.groupId, decoded.token)
                             .onSuccess {
                                 snackbarHostState.showSnackbar("招待を受諾しました")
+                                // グループ同期をリトリガー
+                                viewModel.refreshGroupsAfterAcceptance()
                             }
                             .onFailure {
                                 snackbarHostState.showSnackbar(it.message ?: "招待の受諾に失敗しました")
