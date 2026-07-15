@@ -2,6 +2,7 @@ package net.sumomo_planning.taskringk.data.remote.firestore
 
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.Timestamp
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.tasks.await
@@ -65,6 +66,19 @@ class FirestoreInvitationDataSource @Inject constructor(
     ): AcceptedInvitation {
         val groupRef = groupsCollection.document(invitation.groupId)
 
+        // ① 現在のグループ状態を取得
+        val snapshot = groupRef.get().await()
+        if (!snapshot.exists()) {
+            throw IllegalStateException("Group not found")
+        }
+
+        val currentMembers = (snapshot.get("members") as? List<*>)?.mapNotNull { item ->
+            if (item is Map<*, *>) {
+                @Suppress("UNCHECKED_CAST")
+                item as? Map<String, Any>
+            } else null
+        } ?: emptyList()
+
         val now = java.time.Instant.now()
         val member = SharedGroupMember(
             memberId = acceptorUid,
@@ -77,10 +91,33 @@ class FirestoreInvitationDataSource @Inject constructor(
             securityKey = invitation.securityKey,
         )
 
+        // ② メンバーが既に存在するかチェック
+        val memberExists = currentMembers.any { m -> m["memberId"] == acceptorUid }
+
+        // ③ 新しいメンバーリストを構築（重複排除）
+        val updatedMembers = if (memberExists) {
+            // メンバー既存の場合は情報を更新
+            currentMembers.map { m ->
+                if (m["memberId"] == acceptorUid) {
+                    m + mapOf(
+                        "acceptedAt" to Timestamp(now.epochSecond, now.nano),
+                        "isSignedIn" to true,
+                    )
+                } else m
+            }
+        } else {
+            // 新しいメンバーを追加
+            currentMembers + member.toMemberMap()
+        }
+
+        // ④ 配列全体を上書きして重複を防ぐ
+        val allowedUid = (snapshot.get("allowedUid") as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+        val updatedAllowedUid = (allowedUid + acceptorUid).distinct()
+
         groupRef.update(
             mapOf(
-                "allowedUid" to FieldValue.arrayUnion(acceptorUid),
-                "members" to FieldValue.arrayUnion(member.toMemberMap()),
+                "allowedUid" to updatedAllowedUid,
+                "members" to updatedMembers,
                 "updatedAt" to FieldValue.serverTimestamp(),
             )
         ).await()
