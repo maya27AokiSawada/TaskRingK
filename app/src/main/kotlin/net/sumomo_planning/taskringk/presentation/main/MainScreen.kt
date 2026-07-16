@@ -2,9 +2,8 @@ package net.sumomo_planning.taskringk.presentation.main
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -14,15 +13,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import net.sumomo_planning.taskringk.presentation.auth.AuthViewModel
 import net.sumomo_planning.taskringk.presentation.group.SharedGroupScreen
-import net.sumomo_planning.taskringk.presentation.notification.NotificationScreen
+import net.sumomo_planning.taskringk.presentation.group.SharedGroupDetailScreen
+import net.sumomo_planning.taskringk.domain.model.SharedGroup
+import net.sumomo_planning.taskringk.presentation.settings.SettingsPlaceholderScreen
 import net.sumomo_planning.taskringk.presentation.shoppinglist.SharedListScreen
-import net.sumomo_planning.taskringk.presentation.whiteboard.WhiteboardScreen
 
 /**
  * Main screen with a bottom navigation bar (Phase 3+).
@@ -30,8 +32,7 @@ import net.sumomo_planning.taskringk.presentation.whiteboard.WhiteboardScreen
  * Tabs (porting_spec §3-1):
  *  Tab 0 — 買い物リスト   (placeholder; Phase 4)
  *  Tab 1 — グループ管理  (SharedGroupScreen; Phase 3)
- *  Tab 2 — ボード        (WhiteboardScreen; Phase 8)
- *  Tab 3 — 通知          (NotificationScreen; Phase 7)
+ *  Tab 2 — 設定          (placeholder; Phase 9)
  */
 @Composable
 fun MainScreen(
@@ -40,6 +41,8 @@ fun MainScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(1) }
+    var selectedGroupDetail by remember { mutableStateOf<SharedGroup?>(null) }
+    var whiteboardGroupId by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -60,14 +63,8 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Brush, contentDescription = null) },
-                    label = { Text("ボード") },
-                )
-                NavigationBarItem(
-                    selected = selectedTab == 3,
-                    onClick = { selectedTab = 3 },
-                    icon = { Icon(Icons.Default.Notifications, contentDescription = null) },
-                    label = { Text("通知") },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                    label = { Text("設定") },
                 )
             }
         },
@@ -75,14 +72,27 @@ fun MainScreen(
         when (selectedTab) {
             0 -> SharedListScreen(
                 modifier = Modifier.padding(innerPadding),
+                initialGroupId = whiteboardGroupId,
+                onInitialGroupConsumed = { whiteboardGroupId = null },
             )
-            1 -> SharedGroupScreen(
-                modifier = Modifier.padding(innerPadding),
-            )
-            2 -> WhiteboardScreen(
-                modifier = Modifier.padding(innerPadding),
-            )
-            else -> NotificationScreen(
+            1 -> if (selectedGroupDetail != null) {
+                SharedGroupDetailScreen(
+                    group = selectedGroupDetail!!,
+                    modifier = Modifier.padding(innerPadding),
+                    onBack = { selectedGroupDetail = null },
+                    onOpenWhiteboard = { groupId ->
+                        whiteboardGroupId = groupId
+                        selectedGroupDetail = null
+                        selectedTab = 0
+                    },
+                )
+            } else {
+                SharedGroupScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    onOpenGroupDetail = { group -> selectedGroupDetail = group },
+                )
+            }
+            else -> SettingsPlaceholderScreen(
                 onSignOut = {
                     authViewModel.signOut()
                     onSignOut()

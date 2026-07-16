@@ -76,6 +76,8 @@ import net.sumomo_planning.taskringk.presentation.todo.TodoScreen
 @Composable
 fun SharedListScreen(
     modifier: Modifier = Modifier,
+    initialGroupId: String? = null,
+    onInitialGroupConsumed: () -> Unit = {},
     viewModel: SharedListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -98,6 +100,14 @@ fun SharedListScreen(
         val msg = uiState.errorMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(msg)
         viewModel.clearError()
+    }
+
+    LaunchedEffect(initialGroupId, uiState.groups) {
+        val targetGroupId = initialGroupId ?: return@LaunchedEffect
+        if (uiState.groups.any { it.groupId == targetGroupId }) {
+            viewModel.selectGroup(targetGroupId)
+            onInitialGroupConsumed()
+        }
     }
 
     val items = uiState.currentList?.activeItems ?: emptyList()
