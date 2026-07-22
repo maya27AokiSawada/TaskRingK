@@ -24,11 +24,13 @@ class HybridInvitationRepositoryImpl @Inject constructor(
         inviterName: String,
     ): Result<Invitation> = runCatching {
         val token = deviceIdService.generateInvitationToken()
+        val securityKey = deviceIdService.generateSecurityKey()
         firestoreInvitationDataSource.createInvitation(
             group = group,
             invitedBy = invitedBy,
             inviterName = inviterName,
             token = token,
+            securityKey = securityKey,
         )
     }
 

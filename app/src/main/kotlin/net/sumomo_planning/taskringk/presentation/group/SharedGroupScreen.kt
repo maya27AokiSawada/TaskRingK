@@ -47,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import java.util.concurrent.Executors
+import kotlinx.coroutines.launch
 import net.sumomo_planning.taskringk.core.ui.OfflineBanner
 import net.sumomo_planning.taskringk.core.common.InvitationPayload
 import net.sumomo_planning.taskringk.core.common.InvitationPayloadParser
@@ -96,6 +98,7 @@ fun SharedGroupScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var groupToInvite by remember { mutableStateOf<SharedGroup?>(null) }
@@ -103,6 +106,7 @@ fun SharedGroupScreen(
     var groupToLeave by remember { mutableStateOf<SharedGroup?>(null) }
     var showScanDialog by rememberSaveable { mutableStateOf(false) }
     var scannedPayload by remember { mutableStateOf<InvitationPayload?>(null) }
+    var acceptingInvitation by remember { mutableStateOf(false) }
     var scanErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -200,7 +204,11 @@ fun SharedGroupScreen(
             groupName = group.groupName,
             onDismiss = { groupToInvite = null },
             onConfirm = {
-                viewModel.createInvitation(group)
+                coroutineScope.launch {
+                    viewModel.createInvitation(group).onFailure { throwable ->
+                        snackbarHostState.showSnackbar(throwable.message ?: "招待の作成に失敗しました")
+                    }
+                }
                 groupToInvite = null
             },
         )
@@ -237,6 +245,25 @@ fun SharedGroupScreen(
     scannedPayload?.let { payload ->
         ScannedInvitationDialog(
             payload = payload,
+            isAccepting = acceptingInvitation,
+            onAccept = {
+                if (acceptingInvitation) return@ScannedInvitationDialog
+                acceptingInvitation = true
+                coroutineScope.launch {
+                    val result = viewModel.acceptInvitation(payload)
+                    acceptingInvitation = false
+                    result.fold(
+                        onSuccess = {
+                            scannedPayload = null
+                            viewModel.refreshGroupsAfterAcceptance()
+                            snackbarHostState.showSnackbar("招待を受諾しました")
+                        },
+                        onFailure = { error ->
+                            snackbarHostState.showSnackbar(error.message ?: "招待受諾に失敗しました")
+                        },
+                    )
+                }
+            },
             onDismiss = { scannedPayload = null },
         )
     }
@@ -636,6 +663,8 @@ private fun QrScanDialog(
 @Composable
 private fun ScannedInvitationDialog(
     payload: InvitationPayload,
+    isAccepting: Boolean,
+    onAccept: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -649,7 +678,16 @@ private fun ScannedInvitationDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("閉じる") }
+            TextButton(onClick = onAccept, enabled = !isAccepting) {
+                if (isAccepting) {
+                    Text("受諾中...")
+                } else {
+                    Text("参加する")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isAccepting) { Text("閉じる") }
         },
     )
 }

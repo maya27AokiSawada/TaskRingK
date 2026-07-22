@@ -23,16 +23,25 @@ fun InvitationDto.toDomain(): Invitation = Invitation(
 
 fun Invitation.toFirestoreMap(): Map<String, Any?> = mapOf(
     "token" to token,
+    "invitationId" to token,
     "groupId" to groupId,
+    "sharedGroupId" to groupId,
     "groupName" to groupName,
     "invitedBy" to invitedBy,
+    "inviterUid" to invitedBy,
     "inviterName" to inviterName,
+    "inviterDisplayName" to inviterName,
     "createdAt" to FieldValue.serverTimestamp(),
     "expiresAt" to Timestamp(expiresAt.epochSecond, expiresAt.nano),
     "maxUses" to maxUses,
     "currentUses" to currentUses,
     "usedBy" to usedBy,
     "securityKey" to securityKey,
+    "invitationType" to "individual",
+    "inviteRole" to "member",
+    "status" to "pending",
+    "type" to "secure_qr_invitation",
+    "version" to "3.1",
 )
 
 fun AcceptedInvitation.toFirestoreMap(): Map<String, Any?> = mapOf(

@@ -28,9 +28,10 @@ service cloud.firestore {
     }
 
     function allowedJoinUpdate(groupId) {
-      // テスト用：許可条件を最小限に
+      // SharedGroups/{groupId} 更新時に利用。resource を直接参照して
+      // 循環的な get() 参照による query deny を回避する。
       return signedIn() &&
-        !groupMember(groupId) &&
+        !(currentUid() in resource.data.allowedUid) &&
         currentUid() in request.resource.data.allowedUid;
     }
 
@@ -41,13 +42,13 @@ service cloud.firestore {
     }
 
     match /SharedGroups/{groupId} {
-      allow read: if signedIn() && groupMember(groupId);
+      allow read: if signedIn() && currentUid() in resource.data.allowedUid;
       allow create: if signedIn() &&
         request.resource.data.groupId == groupId &&
         request.resource.data.ownerUid == currentUid() &&
         currentUid() in request.resource.data.allowedUid;
-      allow update: if (signedIn() && groupMember(groupId)) || allowedJoinUpdate(groupId);
-      allow delete: if signedIn() && groupOwner(groupId);
+      allow update: if (signedIn() && currentUid() in resource.data.allowedUid) || allowedJoinUpdate(groupId);
+      allow delete: if signedIn() && resource.data.ownerUid == currentUid();
 
       match /sharedLists/{listId} {
         allow read, create, update, delete: if signedIn() && groupMember(groupId);

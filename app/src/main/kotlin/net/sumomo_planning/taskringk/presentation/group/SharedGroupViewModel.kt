@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.sumomo_planning.taskringk.core.common.InvitationPayload
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
@@ -29,6 +30,7 @@ import net.sumomo_planning.taskringk.domain.usecase.invitation.ValidateInvitatio
 
 data class SharedGroupUiState(
     val groups: List<SharedGroup> = emptyList(),
+    val activeInvitation: Invitation? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val currentUser: AuthUser? = null,
@@ -150,11 +152,22 @@ class SharedGroupViewModel @Inject constructor(
 
     suspend fun createInvitation(group: SharedGroup): Result<Invitation> {
         val user = _uiState.value.currentUser ?: return Result.failure(IllegalStateException("Sign in required"))
-        return createInvitationUseCase(
+        val result = createInvitationUseCase(
             group = group,
             invitedBy = user.uid,
             inviterName = user.displayName ?: user.uid,
         )
+        result.onSuccess { invitation ->
+            _uiState.update { it.copy(activeInvitation = invitation) }
+        }
+        result.onFailure { e ->
+            _uiState.update { it.copy(errorMessage = e.message ?: "招待の作成に失敗しました") }
+        }
+        return result
+    }
+
+    fun clearActiveInvitation() {
+        _uiState.update { it.copy(activeInvitation = null) }
     }
 
     suspend fun validateInvitation(groupId: String, token: String): Result<Invitation> =
@@ -172,6 +185,22 @@ class SharedGroupViewModel @Inject constructor(
             acceptorEmail = user.email ?: "",
             acceptorName = user.displayName ?: user.uid,
         )
+    }
+
+    suspend fun acceptInvitation(payload: InvitationPayload): Result<AcceptedInvitation> {
+        val validated = validateInvitation(payload.groupId, payload.invitationId)
+        validated.onSuccess { invitation ->
+            val expectedKey = invitation.securityKey
+            val providedKey = payload.securityKey
+            if (!expectedKey.isNullOrBlank() && providedKey.isNullOrBlank()) {
+                return Result.failure(IllegalStateException("招待キーが不足しています"))
+            }
+            if (!expectedKey.isNullOrBlank() && expectedKey != providedKey) {
+                return Result.failure(IllegalStateException("招待キーが一致しません"))
+            }
+        }
+        validated.onFailure { return Result.failure(it) }
+        return acceptInvitation(payload.groupId, payload.invitationId)
     }
 
     fun refreshGroupsAfterAcceptance() {
