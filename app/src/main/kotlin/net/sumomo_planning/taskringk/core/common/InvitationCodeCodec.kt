@@ -2,7 +2,6 @@ package net.sumomo_planning.taskringk.core.common
 
 import java.net.URLDecoder
 import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 data class InvitationCode(
     val token: String,
@@ -12,12 +11,13 @@ data class InvitationCode(
 
 object InvitationCodeCodec {
     private const val PREFIX = "taskringk://invite"
+    private const val UTF_8 = "UTF-8"
 
     fun encode(code: InvitationCode): String {
-        val token = URLEncoder.encode(code.token, StandardCharsets.UTF_8)
-        val groupId = URLEncoder.encode(code.groupId, StandardCharsets.UTF_8)
+        val token = URLEncoder.encode(code.token, UTF_8)
+        val groupId = URLEncoder.encode(code.groupId, UTF_8)
         val securityKey = code.securityKey?.let {
-            "&key=${URLEncoder.encode(it, StandardCharsets.UTF_8)}"
+            "&key=${URLEncoder.encode(it, UTF_8)}"
         } ?: ""
         return "$PREFIX?token=$token&groupId=$groupId$securityKey"
     }
@@ -31,7 +31,7 @@ object InvitationCodeCodec {
             ?.mapNotNull { entry ->
                 val parts = entry.split('=', limit = 2)
                 if (parts.size != 2) return@mapNotNull null
-                parts[0] to URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
+                parts[0] to URLDecoder.decode(parts[1], UTF_8)
             }
             ?.toMap()
             .orEmpty()

@@ -89,6 +89,7 @@ val NotificationType.storageValue: String
         NotificationType.LIST_CREATED -> "listCreated"
         NotificationType.LIST_DELETED -> "listDeleted"
         NotificationType.LIST_RENAMED -> "listRenamed"
+        NotificationType.INVITATION_ACCEPTED -> "invitationAccepted"
         NotificationType.MEMBER_JOINED -> "memberJoined"
         NotificationType.MEMBER_LEFT -> "memberLeft"
         NotificationType.GROUP_DELETED -> "groupDeleted"
@@ -97,6 +98,7 @@ val NotificationType.storageValue: String
 fun String.toNotificationType(): NotificationType = when (this) {
     "listDeleted" -> NotificationType.LIST_DELETED
     "listRenamed" -> NotificationType.LIST_RENAMED
+    "invitationAccepted" -> NotificationType.INVITATION_ACCEPTED
     "memberJoined" -> NotificationType.MEMBER_JOINED
     "memberLeft" -> NotificationType.MEMBER_LEFT
     "groupDeleted" -> NotificationType.GROUP_DELETED

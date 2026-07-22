@@ -2,6 +2,7 @@ package net.sumomo_planning.taskringk.domain.repository
 
 import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
 import net.sumomo_planning.taskringk.domain.model.Invitation
+import net.sumomo_planning.taskringk.domain.model.Notification
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 
 interface InvitationRepository {
@@ -20,4 +21,6 @@ interface InvitationRepository {
         acceptorEmail: String,
         acceptorName: String,
     ): Result<AcceptedInvitation>
+
+    suspend fun processInvitationAcceptedNotification(notification: Notification): Result<Unit>
 }

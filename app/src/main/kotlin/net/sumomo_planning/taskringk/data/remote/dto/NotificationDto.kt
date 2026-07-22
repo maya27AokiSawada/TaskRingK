@@ -13,6 +13,7 @@ data class NotificationDto(
     val groupId: String = "",
     val listId: String? = null,
     val message: String = "",
+    val metadata: Map<String, String> = emptyMap(),
     val isRead: Boolean = false,
     val createdAt: Timestamp? = null,
 )

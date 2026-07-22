@@ -19,9 +19,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -59,7 +59,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.AnnotatedString
 import android.graphics.Bitmap
@@ -67,12 +66,14 @@ import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -256,7 +257,7 @@ fun SharedGroupScreen(
                         onSuccess = {
                             scannedPayload = null
                             viewModel.refreshGroupsAfterAcceptance()
-                            snackbarHostState.showSnackbar("招待を受諾しました")
+                            snackbarHostState.showSnackbar("参加リクエストを送信しました")
                         },
                         onFailure = { error ->
                             snackbarHostState.showSnackbar(error.message ?: "招待受諾に失敗しました")
@@ -440,7 +441,7 @@ private fun GroupCard(
                         DropdownMenuItem(
                             text = { Text("離脱") },
                             leadingIcon = {
-                                Icon(Icons.Default.ExitToApp, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                             },
                             onClick = {
                                 showMenu = false
@@ -565,6 +566,7 @@ private fun createQrBitmap(content: String, sizePx: Int): Bitmap? {
     }.getOrNull()
 }
 
+@androidx.annotation.OptIn(markerClass = [ExperimentalGetImage::class])
 @Composable
 private fun QrScanDialog(
     onDismiss: () -> Unit,

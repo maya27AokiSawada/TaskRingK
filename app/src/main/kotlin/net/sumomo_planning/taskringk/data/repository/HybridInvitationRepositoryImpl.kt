@@ -8,6 +8,7 @@ import net.sumomo_planning.taskringk.data.remote.firestore.FirestoreInvitationDa
 import net.sumomo_planning.taskringk.domain.model.NotificationType
 import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
 import net.sumomo_planning.taskringk.domain.model.Invitation
+import net.sumomo_planning.taskringk.domain.model.Notification
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.repository.NotificationRepository
 import net.sumomo_planning.taskringk.domain.repository.InvitationRepository
@@ -45,27 +46,76 @@ class HybridInvitationRepositoryImpl @Inject constructor(
         acceptorName: String,
     ): Result<AcceptedInvitation> = runCatching {
         val invitation = firestoreInvitationDataSource.validateInvitation(groupId, token)
-        val accepted = firestoreInvitationDataSource.acceptInvitation(
+        require(invitation.invitedBy != acceptorUid) { "自分自身を招待することはできません" }
+
+        val accepted = firestoreInvitationDataSource.createInvitationAcceptedNotification(
             invitation = invitation,
             acceptorUid = acceptorUid,
             acceptorEmail = acceptorEmail,
             acceptorName = acceptorName,
         )
 
-        val recipients = invitation.usedBy.filterNot { it == acceptorUid } + invitation.invitedBy
+        notificationRepository.createNotifications(
+            listOf(
+                NotificationFactory.create(
+                    userId = invitation.invitedBy,
+                    type = NotificationType.INVITATION_ACCEPTED,
+                    groupId = groupId,
+                    message = "$acceptorName さんが「${invitation.groupName}」への参加を希望しています",
+                    metadata = mapOf(
+                        "invitationId" to invitation.token,
+                        "acceptorUid" to acceptorUid,
+                        "acceptorEmail" to acceptorEmail,
+                        "acceptorName" to acceptorName,
+                        "groupName" to invitation.groupName,
+                    ),
+                )
+            )
+        )
+
+        accepted
+    }
+
+    override suspend fun processInvitationAcceptedNotification(notification: Notification): Result<Unit> = runCatching {
+        require(notification.type == NotificationType.INVITATION_ACCEPTED) {
+            "Unsupported notification type: ${notification.type}"
+        }
+
+        val invitationId = notification.metadata["invitationId"]
+            ?: throw IllegalStateException("invitationId metadata is missing")
+        val acceptorUid = notification.metadata["acceptorUid"]
+            ?: throw IllegalStateException("acceptorUid metadata is missing")
+        val acceptorEmail = notification.metadata["acceptorEmail"].orEmpty()
+        val acceptorName = notification.metadata["acceptorName"]
+            ?: throw IllegalStateException("acceptorName metadata is missing")
+
+        val invitation = firestoreInvitationDataSource.validateInvitation(notification.groupId, invitationId)
+        firestoreInvitationDataSource.processAcceptedInvitation(
+            invitation = invitation,
+            acceptorUid = acceptorUid,
+            acceptorEmail = acceptorEmail,
+            acceptorName = acceptorName,
+        )
+
+        val recipients = firestoreInvitationDataSource.getAllowedUids(notification.groupId)
+            .filterNot { recipientUid -> recipientUid == acceptorUid }
+
         if (recipients.isNotEmpty()) {
             notificationRepository.createNotifications(
-                recipients.distinct().map { recipientUid ->
+                recipients.map { recipientUid ->
                     NotificationFactory.create(
                         userId = recipientUid,
                         type = NotificationType.MEMBER_JOINED,
-                        groupId = groupId,
+                        groupId = notification.groupId,
                         message = "$acceptorName さんがグループに参加しました",
+                        metadata = mapOf(
+                            "acceptorUid" to acceptorUid,
+                            "acceptorName" to acceptorName,
+                            "invitationId" to invitationId,
+                        ),
                     )
                 }
             )
         }
-
-        accepted
     }
 }

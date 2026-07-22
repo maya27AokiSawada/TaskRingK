@@ -18,6 +18,8 @@ import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.AcceptedInvitation
 import net.sumomo_planning.taskringk.domain.model.Invitation
+import net.sumomo_planning.taskringk.domain.model.Notification
+import net.sumomo_planning.taskringk.domain.model.NotificationType
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.usecase.auth.ObserveAuthStateUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.CreateGroupUseCase
@@ -26,7 +28,10 @@ import net.sumomo_planning.taskringk.domain.usecase.group.LeaveGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.ObserveGroupsUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.AcceptInvitationUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.CreateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.ProcessInvitationAcceptedNotificationUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.ValidateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.notification.MarkNotificationAsReadUseCase
+import net.sumomo_planning.taskringk.domain.usecase.notification.ObserveUnreadNotificationsUseCase
 
 data class SharedGroupUiState(
     val groups: List<SharedGroup> = emptyList(),
@@ -47,6 +52,9 @@ class SharedGroupViewModel @Inject constructor(
     private val createInvitationUseCase: CreateInvitationUseCase,
     private val validateInvitationUseCase: ValidateInvitationUseCase,
     private val acceptInvitationUseCase: AcceptInvitationUseCase,
+    private val observeUnreadNotificationsUseCase: ObserveUnreadNotificationsUseCase,
+    private val markNotificationAsReadUseCase: MarkNotificationAsReadUseCase,
+    private val processInvitationAcceptedNotificationUseCase: ProcessInvitationAcceptedNotificationUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -54,6 +62,9 @@ class SharedGroupViewModel @Inject constructor(
     val uiState: StateFlow<SharedGroupUiState> = _uiState.asStateFlow()
 
     private var groupsJob: Job? = null
+    private var invitationNotificationsJob: Job? = null
+    private val processingNotificationIds = mutableSetOf<String>()
+    private val failedNotificationIds = mutableSetOf<String>()
 
     init {
         observeAuthStateUseCase()
@@ -61,8 +72,12 @@ class SharedGroupViewModel @Inject constructor(
                 _uiState.update { it.copy(currentUser = user) }
                 if (user != null) {
                     startObservingGroups(user.uid)
+                    startObservingInvitationNotifications(user.uid)
                 } else {
                     groupsJob?.cancel()
+                    invitationNotificationsJob?.cancel()
+                    processingNotificationIds.clear()
+                    failedNotificationIds.clear()
                     _uiState.update { it.copy(groups = emptyList()) }
                 }
             }
@@ -73,6 +88,54 @@ class SharedGroupViewModel @Inject constructor(
             .onEach { isOnline -> _uiState.update { it.copy(isOnline = isOnline) } }
             .catch { /* non-fatal */ }
             .launchIn(viewModelScope)
+    }
+
+    private fun startObservingInvitationNotifications(uid: String) {
+        invitationNotificationsJob?.cancel()
+        invitationNotificationsJob = observeUnreadNotificationsUseCase(uid)
+            .onEach { notifications ->
+                notifications
+                    .asSequence()
+                    .filter { it.type == NotificationType.INVITATION_ACCEPTED }
+                    .filterNot { processingNotificationIds.contains(it.notificationId) }
+                    .filterNot { failedNotificationIds.contains(it.notificationId) }
+                    .forEach { notification ->
+                        processingNotificationIds += notification.notificationId
+                        processInvitationNotification(notification)
+                    }
+            }
+            .catch {
+                _uiState.update { it.copy(errorMessage = "招待通知の処理に失敗しました") }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun processInvitationNotification(notification: Notification) {
+        viewModelScope.launch {
+            processInvitationAcceptedNotificationUseCase(notification).fold(
+                onSuccess = {
+                    runCatching { markNotificationAsReadUseCase(notification.notificationId) }
+                        .onSuccess {
+                            processingNotificationIds.remove(notification.notificationId)
+                            failedNotificationIds.remove(notification.notificationId)
+                        }
+                        .onFailure { error ->
+                            processingNotificationIds.remove(notification.notificationId)
+                            failedNotificationIds += notification.notificationId
+                            _uiState.update {
+                                it.copy(errorMessage = error.message ?: "招待通知の既読化に失敗しました")
+                            }
+                        }
+                },
+                onFailure = { error ->
+                    processingNotificationIds.remove(notification.notificationId)
+                    failedNotificationIds += notification.notificationId
+                    _uiState.update {
+                        it.copy(errorMessage = error.message ?: "招待通知の処理に失敗しました")
+                    }
+                },
+            )
+        }
     }
 
     private fun startObservingGroups(uid: String) {
@@ -188,6 +251,12 @@ class SharedGroupViewModel @Inject constructor(
     }
 
     suspend fun acceptInvitation(payload: InvitationPayload): Result<AcceptedInvitation> {
+        val currentUser = _uiState.value.currentUser
+            ?: return Result.failure(IllegalStateException("Sign in required"))
+        if (_uiState.value.groups.any { it.groupId == payload.groupId && it.canAccess(currentUser.uid) }) {
+            return Result.failure(IllegalStateException("既にこのグループに参加しています"))
+        }
+
         val validated = validateInvitation(payload.groupId, payload.invitationId)
         validated.onSuccess { invitation ->
             val expectedKey = invitation.securityKey

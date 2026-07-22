@@ -12,6 +12,7 @@ object NotificationFactory {
         groupId: String,
         listId: String? = null,
         message: String,
+        metadata: Map<String, String> = emptyMap(),
     ): Notification = Notification(
         notificationId = UUID.randomUUID().toString(),
         userId = userId,
@@ -19,6 +20,7 @@ object NotificationFactory {
         groupId = groupId,
         listId = listId,
         message = message,
+        metadata = metadata,
         isRead = false,
         createdAt = Instant.now(),
     )

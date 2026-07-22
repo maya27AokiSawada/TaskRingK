@@ -2,7 +2,6 @@ package net.sumomo_planning.taskringk.core.common
 
 import java.net.URI
 import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -20,6 +19,8 @@ data class InvitationPayload(
 )
 
 object InvitationPayloadParser {
+    private const val UTF_8 = "UTF-8"
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -93,7 +94,7 @@ object InvitationPayloadParser {
                     return@mapNotNull null
                 }
                 val value = if (parts.size > 1) {
-                    URLDecoder.decode(parts[1], StandardCharsets.UTF_8)
+                    URLDecoder.decode(parts[1], UTF_8)
                 } else {
                     ""
                 }

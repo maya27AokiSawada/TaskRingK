@@ -12,6 +12,7 @@ fun NotificationDto.toDomain(): Notification = Notification(
     groupId = groupId,
     listId = listId,
     message = message,
+    metadata = metadata,
     isRead = isRead,
     createdAt = createdAt?.toDate()?.toInstant() ?: Instant.now(),
 )
@@ -23,6 +24,7 @@ fun Notification.toFirestoreMap(): Map<String, Any?> = mapOf(
     "groupId" to groupId,
     "listId" to listId,
     "message" to message,
+    "metadata" to metadata,
     "isRead" to isRead,
     "createdAt" to Timestamp(createdAt.epochSecond, createdAt.nano),
 )

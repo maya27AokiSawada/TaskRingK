@@ -15,6 +15,8 @@ import kotlinx.coroutines.test.setMain
 import net.sumomo_planning.taskringk.core.network.NetworkMonitor
 import net.sumomo_planning.taskringk.domain.model.AuthUser
 import net.sumomo_planning.taskringk.domain.model.GroupType
+import net.sumomo_planning.taskringk.domain.model.Notification
+import net.sumomo_planning.taskringk.domain.model.NotificationType
 import net.sumomo_planning.taskringk.domain.model.SharedGroup
 import net.sumomo_planning.taskringk.domain.model.SyncStatus
 import net.sumomo_planning.taskringk.domain.usecase.auth.ObserveAuthStateUseCase
@@ -24,7 +26,10 @@ import net.sumomo_planning.taskringk.domain.usecase.group.LeaveGroupUseCase
 import net.sumomo_planning.taskringk.domain.usecase.group.ObserveGroupsUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.AcceptInvitationUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.CreateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.invitation.ProcessInvitationAcceptedNotificationUseCase
 import net.sumomo_planning.taskringk.domain.usecase.invitation.ValidateInvitationUseCase
+import net.sumomo_planning.taskringk.domain.usecase.notification.MarkNotificationAsReadUseCase
+import net.sumomo_planning.taskringk.domain.usecase.notification.ObserveUnreadNotificationsUseCase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,6 +52,9 @@ class SharedGroupViewModelTest {
     private val createInvitationUseCase = mockk<CreateInvitationUseCase>()
     private val validateInvitationUseCase = mockk<ValidateInvitationUseCase>()
     private val acceptInvitationUseCase = mockk<AcceptInvitationUseCase>()
+    private val observeUnreadNotificationsUseCase = mockk<ObserveUnreadNotificationsUseCase>()
+    private val markNotificationAsReadUseCase = mockk<MarkNotificationAsReadUseCase>()
+    private val processInvitationAcceptedNotificationUseCase = mockk<ProcessInvitationAcceptedNotificationUseCase>()
     private val networkMonitor = mockk<NetworkMonitor>()
 
     private val fakeUser = AuthUser(uid = "uid-1", email = "test@example.com", displayName = "テスト")
@@ -70,6 +78,7 @@ class SharedGroupViewModelTest {
         every { networkMonitor.isOnlineFlow } returns flowOf(true)
         every { networkMonitor.isOnline } returns true
         every { observeAuthStateUseCase() } returns flowOf(null)
+        every { observeUnreadNotificationsUseCase(any()) } returns flowOf(emptyList())
     }
 
     @After
@@ -86,6 +95,9 @@ class SharedGroupViewModelTest {
         createInvitationUseCase = createInvitationUseCase,
         validateInvitationUseCase = validateInvitationUseCase,
         acceptInvitationUseCase = acceptInvitationUseCase,
+        observeUnreadNotificationsUseCase = observeUnreadNotificationsUseCase,
+        markNotificationAsReadUseCase = markNotificationAsReadUseCase,
+        processInvitationAcceptedNotificationUseCase = processInvitationAcceptedNotificationUseCase,
         networkMonitor = networkMonitor,
     )
 
@@ -103,6 +115,7 @@ class SharedGroupViewModelTest {
     fun `observeAuthState populates currentUser and starts observing groups`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(listOf(fakeGroup))
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
 
         val vm = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -120,6 +133,7 @@ class SharedGroupViewModelTest {
     fun `createGroup succeeds clears isLoading`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery {
             createGroupUseCase(any(), any(), any(), any())
         } returns Result.success(fakeGroup)
@@ -138,6 +152,7 @@ class SharedGroupViewModelTest {
     fun `createGroup failure sets errorMessage`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery {
             createGroupUseCase(any(), any(), any(), any())
         } returns Result.failure(RuntimeException("作成失敗"))
@@ -169,6 +184,7 @@ class SharedGroupViewModelTest {
     fun `deleteGroup succeeds clears isLoading`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery { deleteGroupUseCase(groupId) } returns Result.success(Unit)
 
         val vm = createViewModel()
@@ -185,6 +201,7 @@ class SharedGroupViewModelTest {
     fun `deleteGroup failure sets errorMessage`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery { deleteGroupUseCase(groupId) } returns Result.failure(RuntimeException("削除失敗"))
 
         val vm = createViewModel()
@@ -201,6 +218,7 @@ class SharedGroupViewModelTest {
     fun `leaveGroup succeeds clears isLoading`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery { leaveGroupUseCase(groupId, fakeUser.uid, "member-1") } returns Result.success(Unit)
 
         val vm = createViewModel()
@@ -229,6 +247,7 @@ class SharedGroupViewModelTest {
     fun `clearError resets errorMessage to null`() = runTest {
         every { observeAuthStateUseCase() } returns flowOf(fakeUser)
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
         coEvery {
             createGroupUseCase(any(), any(), any(), any())
         } returns Result.failure(RuntimeException("エラー"))
@@ -250,6 +269,7 @@ class SharedGroupViewModelTest {
         val authFlow = kotlinx.coroutines.flow.MutableStateFlow<AuthUser?>(fakeUser)
         every { observeAuthStateUseCase() } returns authFlow
         every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(listOf(fakeGroup))
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(emptyList())
 
         val vm = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -261,5 +281,33 @@ class SharedGroupViewModelTest {
 
         assertTrue(vm.uiState.value.groups.isEmpty())
         assertNull(vm.uiState.value.currentUser)
+    }
+
+    @Test
+    fun `invitation accepted notification is processed and marked read`() = runTest {
+        val notification = Notification(
+            notificationId = "notif-1",
+            userId = fakeUser.uid,
+            type = NotificationType.INVITATION_ACCEPTED,
+            groupId = groupId,
+            message = "参加希望",
+            metadata = mapOf(
+                "invitationId" to "inv-1",
+                "acceptorUid" to "uid-2",
+                "acceptorName" to "新規ユーザー",
+            ),
+            createdAt = Instant.EPOCH,
+        )
+        every { observeAuthStateUseCase() } returns flowOf(fakeUser)
+        every { observeGroupsUseCase(fakeUser.uid) } returns flowOf(emptyList())
+        every { observeUnreadNotificationsUseCase(fakeUser.uid) } returns flowOf(listOf(notification))
+        coEvery { processInvitationAcceptedNotificationUseCase(notification) } returns Result.success(Unit)
+        coEvery { markNotificationAsReadUseCase("notif-1") } returns Unit
+
+        createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        io.mockk.coVerify(exactly = 1) { processInvitationAcceptedNotificationUseCase(notification) }
+        io.mockk.coVerify(exactly = 1) { markNotificationAsReadUseCase("notif-1") }
     }
 }
