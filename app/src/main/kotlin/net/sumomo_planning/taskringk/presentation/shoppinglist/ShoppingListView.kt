@@ -42,10 +42,10 @@ import net.sumomo_planning.taskringk.domain.model.SharedItem
 @Composable
 fun ShoppingListView(
     items: List<SharedItem>,
+    modifier: Modifier = Modifier,
     onTogglePurchased: (SharedItem) -> Unit = {},
     onEditItem: (SharedItem) -> Unit = {},
     onRemoveItem: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     if (items.isEmpty()) {
         EmptyShoppingState(modifier = modifier.fillMaxSize())

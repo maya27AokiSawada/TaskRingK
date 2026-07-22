@@ -13,10 +13,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -28,6 +28,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -129,7 +130,7 @@ fun SharedListScreen(
                     // リスト追加ボタン
                     if (uiState.selectedGroupId != null) {
                         IconButton(onClick = { showCreateListDialog = true }) {
-                            Icon(Icons.Default.List, contentDescription = "リストを追加")
+                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = "リストを追加")
                         }
                     }
                 },
@@ -316,7 +317,7 @@ private fun SelectorRow(
                 label = { Text("グループ") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = groupExpanded) },
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
             )
             DropdownMenu(
@@ -353,7 +354,7 @@ private fun SelectorRow(
                 label = { Text("リスト") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = listExpanded) },
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth(),
                 enabled = lists.isNotEmpty(),
             )

@@ -57,6 +57,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.util.Locale
 import net.sumomo_planning.taskringk.domain.model.StrokeCapStyle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -366,7 +367,7 @@ private fun BrushToolRow(
                 onValueChange = onStrokeWidthChange,
                 valueRange = 2f..24f,
             )
-            Text(String.format("%.1f", selectedStrokeWidth))
+            Text(String.format(Locale.ROOT, "%.1f", selectedStrokeWidth))
         }
 
         Row(
