@@ -12,12 +12,17 @@ fun NotificationDto.toDomain(): Notification = Notification(
     groupId = groupId,
     listId = listId,
     message = message,
-    metadata = metadata,
+    metadata = metadata.toMutableMap().apply {
+        invitationId?.let { put("invitationId", it) }
+        acceptorUid?.let { put("acceptorUid", it) }
+        acceptorName?.let { put("acceptorName", it) }
+        acceptorEmail?.let { put("acceptorEmail", it) }
+    },
     isRead = isRead,
     createdAt = createdAt?.toDate()?.toInstant() ?: Instant.now(),
 )
 
-fun Notification.toFirestoreMap(): Map<String, Any?> = mapOf(
+fun Notification.toFirestoreMap(): Map<String, Any?> = mutableMapOf<String, Any?>(
     "notificationId" to notificationId,
     "userId" to userId,
     "type" to type.storageValue,
@@ -27,4 +32,7 @@ fun Notification.toFirestoreMap(): Map<String, Any?> = mapOf(
     "metadata" to metadata,
     "isRead" to isRead,
     "createdAt" to Timestamp(createdAt.epochSecond, createdAt.nano),
-)
+).apply {
+    // Flatten metadata for Flutter compatibility
+    putAll(metadata)
+}

@@ -1,0 +1,8 @@
+- [ ] Firestoreセキュリティルールの修正
+    - [ ] `firestore.rules` にメンバーチェック補助関数の追加
+    - [ ] `Notifications` コレクションの `create` ルール緩和
+- [ ] アプリケーションコードの修正
+    - [ ] `HybridNotificationRepositoryImpl.kt` の `createNotifications` からエラー握り潰しを削除
+- [ ] 動作確認
+    - [ ] ユニットテストの実行
+    - [ ] (手動) `firebase deploy` の実行確認

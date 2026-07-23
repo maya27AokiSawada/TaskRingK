@@ -48,7 +48,7 @@ class HybridInvitationRepositoryImpl @Inject constructor(
         val invitation = firestoreInvitationDataSource.validateInvitation(groupId, token)
         require(invitation.invitedBy != acceptorUid) { "自分自身を招待することはできません" }
 
-        val accepted = firestoreInvitationDataSource.createInvitationAcceptedNotification(
+        val accepted = firestoreInvitationDataSource.processAcceptedInvitation(
             invitation = invitation,
             acceptorUid = acceptorUid,
             acceptorEmail = acceptorEmail,

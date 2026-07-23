@@ -7,6 +7,7 @@ data class AcceptedInvitation(
     val acceptorEmail: String,
     val acceptorName: String,
     val groupId: String,
+    val invitationId: String,
     val listId: String? = null,
     val role: SharedGroupRole,
     val acceptedAt: Instant,

@@ -14,6 +14,11 @@ data class NotificationDto(
     val listId: String? = null,
     val message: String = "",
     val metadata: Map<String, String> = emptyMap(),
+    // Flat fields for Flutter compatibility
+    val invitationId: String? = null,
+    val acceptorUid: String? = null,
+    val acceptorName: String? = null,
+    val acceptorEmail: String? = null,
     val isRead: Boolean = false,
     val createdAt: Timestamp? = null,
 )

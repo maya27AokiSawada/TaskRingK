@@ -23,8 +23,7 @@ class HybridNotificationRepositoryImpl @Inject constructor(
             }
 
     override suspend fun createNotifications(notifications: List<Notification>) {
-        runCatching { firestoreNotificationDataSource.createNotifications(notifications) }
-            .onFailure { Log.w(TAG, "Firestore createNotifications failed", it) }
+        firestoreNotificationDataSource.createNotifications(notifications)
     }
 
     override suspend fun markAsRead(notificationId: String) {
